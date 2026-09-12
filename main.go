@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -59,7 +61,10 @@ func main() {
 		Action: run,
 	}
 
-	if err := cmd.Run(context.Background(), os.Args); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if err := cmd.Run(ctx, os.Args); err != nil {
 		slog.Error("exporter failed", "err", err)
 		os.Exit(1)
 	}
@@ -97,15 +102,31 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
+	// Let an in-flight scrape finish before going away, so that Prometheus
+	// gets a complete response rather than a scrape error.
+	shutdownDone := make(chan struct{})
 	go func() {
+		defer close(shutdownDone)
 		<-ctx.Done()
-		server.Close()
+
+		// A scrape takes at most one device timeout, plus a margin to send
+		// the response.
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), cmd.Duration("timeout")+time.Second)
+		defer cancel()
+
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			logger.Error("shutdown failed", "err", err)
+		}
 	}()
 
 	logger.Info("listening", "address", address, "path", path, "target", client.Target())
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return err
 	}
+
+	// ListenAndServe returns as soon as Shutdown starts, so wait for the
+	// drain to complete before letting the process exit.
+	<-shutdownDone
 
 	return nil
 }
