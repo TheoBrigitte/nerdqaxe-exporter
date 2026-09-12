@@ -57,7 +57,7 @@ var (
 	fanRatio = desc("fan_speed_ratio", "Fan speed as a fraction of maximum (fans.speedPerc).", "fan")
 
 	blocksFound        = desc("blocks_found_total", "Blocks found over the lifetime of the device (totalFoundBlocks).")
-	sessionBlocksFound = desc("session_blocks_found", "Blocks found since the last restart (foundBlocks).")
+	sessionBlocksFound = desc("session_blocks_found_total", "Blocks found since the last restart (foundBlocks).")
 	bestDifficulty     = desc("best_difficulty", "Best share difficulty over the lifetime of the device (bestDiff).")
 	duplicateNonces    = desc("duplicate_hw_nonces_total", "Duplicate nonces returned by the hardware (duplicateHWNonces).")
 
@@ -90,10 +90,51 @@ func New(client *nerdqaxe.Client, logger *slog.Logger) *Collector {
 	return &Collector{client: client, logger: logger}
 }
 
-// Describe implements prometheus.Collector. It sends no descriptors, making
-// this an unchecked collector: metrics are only described from what an actual
-// scrape returns.
-func (c *Collector) Describe(ch chan<- *prometheus.Desc) {}
+// Describe implements prometheus.Collector. It sends every descriptor the
+// collector can emit, so that inconsistencies are caught at registration time.
+func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- up
+	ch <- scrapeDuration
+	ch <- info
+
+	ch <- hashRate
+
+	ch <- power
+	ch <- inputVoltage
+	ch <- inputCurrent
+	ch <- coreVoltage
+	ch <- coreVoltageConfigured
+	ch <- frequency
+	ch <- shutdown
+
+	ch <- temperature
+	ch <- asicTemp
+	ch <- overheatTemp
+
+	ch <- fanRPM
+	ch <- fanRatio
+
+	ch <- blocksFound
+	ch <- sessionBlocksFound
+	ch <- bestDifficulty
+	ch <- duplicateNonces
+
+	ch <- usingFallback
+	ch <- poolMode
+
+	ch <- poolConnected
+	ch <- poolDifficulty
+	ch <- networkDifficulty
+	ch <- poolAccepted
+	ch <- poolRejected
+	ch <- poolBestDiff
+	ch <- poolPingRTT
+	ch <- poolPingLoss
+
+	ch <- uptime
+	ch <- wifiRSSI
+	ch <- freeHeap
+}
 
 // Collect implements prometheus.Collector. It queries the device once, so that
 // scrapes stay synchronous with Prometheus and no state is shared between them.
@@ -137,7 +178,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	ch <- counter(blocksFound, i.TotalFoundBlocks)
-	ch <- gauge(sessionBlocksFound, i.FoundBlocks)
+	ch <- counter(sessionBlocksFound, i.FoundBlocks)
 	ch <- gauge(bestDifficulty, i.BestDiff)
 	ch <- counter(duplicateNonces, i.DuplicateHWNonces)
 

@@ -57,7 +57,7 @@ All metrics are prefixed with `nerdqaxe_`.
 | `asic_temperature_celsius` | Temperature per `asic` index, on boards that report it |
 | `overheat_temperature_celsius` | Shutdown temperature threshold |
 | `fan_speed_rpm`, `fan_speed_ratio` | Fan speed, by `fan` label |
-| `blocks_found_total`, `session_blocks_found` | Blocks found, lifetime and since restart |
+| `blocks_found_total`, `session_blocks_found_total` | Blocks found, lifetime and since restart |
 | `best_difficulty` | Best share difficulty over the lifetime of the device |
 | `duplicate_hw_nonces_total` | Duplicate nonces returned by the hardware |
 | `stratum_using_fallback`, `stratum_pool_mode` | Pool selection state, `mode` is `failover` or `dual` |
