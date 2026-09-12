@@ -7,6 +7,7 @@ BIN = ${BUILD_DIR}/${NAME}.${GOARCH}
 BUILD_DIR := build
 DOCKER_FILE := docker/Dockerfile
 DOCKER_IMAGE := docker.io/theo01/${NAME}:latest
+TARGET ?= http://192.0.2.10
 GO_MAIN := ./main.go
 GOARCH ?= $(shell go env GOARCH)
 LDFLAGS := -s -w \
@@ -68,8 +69,8 @@ clean: ## Clean build artifacts
 
 ## @Development
 
-run: build ## Run the bot
-	${BIN} bot --config config.yaml --config-env config.env --log-level=debug
+run: build ## Run the exporter
+	${BIN} --target ${TARGET}
 
 run-docker: docker ## Run the bot in Docker container
 	docker run --rm -it  \
