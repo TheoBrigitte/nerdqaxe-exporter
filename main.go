@@ -48,7 +48,7 @@ func main() {
 			&cli.StringFlag{
 				Name:  "web.listen-address",
 				Usage: "`address` to listen on for telemetry",
-				Value: ":9800",
+				Value: ":10055",
 			},
 			&cli.StringFlag{
 				Name:  "web.telemetry-path",

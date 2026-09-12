@@ -24,12 +24,9 @@ type SystemInfo struct {
 	SSID        string `json:"ssid"`
 	ASICCount   int    `json:"asicCount"`
 
-	// Hashrate, in GH/s.
-	HashRate    float64 `json:"hashRate"`
-	HashRate1m  float64 `json:"hashRate_1m"`
-	HashRate10m float64 `json:"hashRate_10m"`
-	HashRate1h  float64 `json:"hashRate_1h"`
-	HashRate1d  float64 `json:"hashRate_1d"`
+	// HashRate is the current hashrate, in GH/s. The device also reports 1m
+	// to 1d averages; they are left out so that Prometheus does the averaging.
+	HashRate float64 `json:"hashRate"`
 
 	// Power
 	Power             float64 `json:"power"`             // W
@@ -49,13 +46,11 @@ type SystemInfo struct {
 
 	Fans []Fan `json:"fans"`
 
-	// Mining
-	SharesAccepted    float64 `json:"sharesAccepted"`
-	SharesRejected    float64 `json:"sharesRejected"`
+	// Mining. Shares and session best difficulty are also reported at the top
+	// level, but those are totals over Stratum.Pools, so they are left out.
 	FoundBlocks       float64 `json:"foundBlocks"`
 	TotalFoundBlocks  float64 `json:"totalFoundBlocks"`
 	BestDiff          float64 `json:"bestDiff"`
-	BestSessionDiff   float64 `json:"bestSessionDiff"`
 	DuplicateHWNonces float64 `json:"duplicateHWNonces"`
 	Stratum           Stratum `json:"stratum"`
 
@@ -64,8 +59,6 @@ type SystemInfo struct {
 	WifiRSSI      float64 `json:"wifiRSSI"`
 	FreeHeap      float64 `json:"freeHeap"`    // SPI RAM, bytes
 	FreeHeapInt   float64 `json:"freeHeapInt"` // internal RAM, bytes
-	LastPingRTT   float64 `json:"lastpingrtt"` // ms
-	RecentPingLos float64 `json:"recentpingloss"`
 }
 
 // Fan holds the state of a single fan channel.

@@ -5,6 +5,7 @@ import (
 	"context"
 	"log/slog"
 	"strconv"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -22,47 +23,60 @@ const (
 	percentPerRatio      = 1e2
 )
 
+// poolModes maps the device pool mode to a label value. The modes are
+// FAILOVER and DUAL, see StratumManager::PoolMode in the firmware.
+var poolModes = map[int]string{0: "failover", 1: "dual"}
+
 func desc(name, help string, labels ...string) *prometheus.Desc {
 	return prometheus.NewDesc(prometheus.BuildFQName(namespace, "", name), help, labels, nil)
 }
 
+// Metric descriptions name the field of /api/system/info they are built from,
+// so that users can trace a metric back to the device API.
 var (
-	up                    = desc("up", "Whether the last scrape of the device succeeded.")
-	info                  = desc("info", "Device identity, always 1.", "device_model", "asic_model", "asic_count", "hostname", "ip", "mac", "version", "ssid")
-	hashRate              = desc("hashrate_hashes_per_second", "Hashrate reported by the device.", "window")
-	power                 = desc("power_watts", "Power drawn by the device.")
-	inputVoltage          = desc("input_voltage_volts", "Input voltage.")
-	inputCurrent          = desc("input_current_amperes", "Input current.")
-	coreVoltage           = desc("core_voltage_volts", "ASIC core voltage, configured and measured.", "kind")
-	frequency             = desc("asic_frequency_hertz", "ASIC clock frequency.")
-	shutdown              = desc("shutdown", "Whether the device has shut down mining.")
-	temperature           = desc("temperature_celsius", "Temperature per sensor.", "sensor")
-	asicTemp              = desc("asic_temperature_celsius", "Temperature per ASIC.", "asic")
-	overheatTemp          = desc("overheat_temperature_celsius", "Temperature at which the device shuts down.")
-	fanRPM                = desc("fan_speed_rpm", "Fan speed.", "fan")
-	fanRatio              = desc("fan_speed_ratio", "Fan speed as a fraction of maximum.", "fan")
-	sharesAccepted        = desc("shares_accepted_total", "Shares accepted by the pools.")
-	sharesRejected        = desc("shares_rejected_total", "Shares rejected by the pools.")
-	blocksFound           = desc("blocks_found_total", "Blocks found over the lifetime of the device.")
-	sessionBlocksFound    = desc("session_blocks_found", "Blocks found since the last restart.")
-	bestDifficulty        = desc("best_difficulty", "Best share difficulty over the lifetime of the device.")
-	bestSessionDifficulty = desc("best_session_difficulty", "Best share difficulty since the last restart.")
-	duplicateNonces       = desc("duplicate_hw_nonces_total", "Duplicate nonces returned by the hardware.")
-	usingFallback         = desc("stratum_using_fallback", "Whether the device is mining on the fallback pool.")
-	poolMode              = desc("stratum_pool_mode", "Active pool mode.")
-	poolConnected         = desc("pool_connected", "Whether the stratum connection is established.", "pool")
-	poolDifficulty        = desc("pool_difficulty", "Share difficulty set by the pool.", "pool")
-	networkDifficulty     = desc("network_difficulty", "Bitcoin network difficulty reported by the pool.", "pool")
-	poolAccepted          = desc("pool_shares_accepted_total", "Shares accepted by the pool.", "pool")
-	poolRejected          = desc("pool_shares_rejected_total", "Shares rejected by the pool.", "pool")
-	poolBestDiff          = desc("pool_best_difficulty", "Best share difficulty submitted to the pool this session.", "pool")
-	poolPingRTT           = desc("pool_ping_rtt_seconds", "Round trip time to the pool.", "pool")
-	poolPingLoss          = desc("pool_ping_loss_ratio", "Fraction of ping packets lost to the pool.", "pool")
-	uptime                = desc("uptime_seconds", "Time since the last restart.")
-	wifiRSSI              = desc("wifi_rssi_dbm", "WiFi signal strength.")
-	freeHeap              = desc("free_heap_bytes", "Free heap per memory region.", "region")
-	pingRTT               = desc("ping_rtt_seconds", "Round trip time of the last ping.")
-	pingLoss              = desc("ping_loss_ratio", "Fraction of ping packets recently lost.")
+	up             = desc("up", "Whether the last scrape of the device succeeded.")
+	scrapeDuration = desc("scrape_duration_seconds", "Duration of the last query to the device.")
+	info           = desc("info", "Device identity, always 1 (deviceModel, ASICModel, asicCount, hostname, hostip, macAddr, version, ssid).",
+		"device_model", "asic_model", "asic_count", "hostname", "ip", "mac", "version", "ssid")
+
+	hashRate = desc("hashrate_hashes_per_second", "Current hashrate (hashRate).")
+
+	power                 = desc("power_watts", "Power drawn by the device (power).")
+	inputVoltage          = desc("input_voltage_volts", "Input voltage (voltage).")
+	inputCurrent          = desc("input_current_amperes", "Input current (currentA).")
+	coreVoltage           = desc("core_voltage_volts", "Measured ASIC core voltage (coreVoltageActual).")
+	coreVoltageConfigured = desc("core_voltage_configured_volts", "Configured ASIC core voltage (coreVoltage).")
+	frequency             = desc("asic_frequency_hertz", "Configured ASIC clock frequency (frequency).")
+	shutdown              = desc("shutdown", "Whether the device has shut down mining (shutdown).")
+
+	temperature  = desc("temperature_celsius", "Temperature per sensor (temp, vrTemp, vrTempInt).", "sensor")
+	asicTemp     = desc("asic_temperature_celsius", "Temperature per ASIC (asicTemps), reported as 0 on boards without per-ASIC sensors; the asic_max sensor of nerdqaxe_temperature_celsius is what the device acts on.", "asic")
+	overheatTemp = desc("overheat_temperature_celsius", "Temperature at which the device shuts down (overheat_temp).")
+
+	fanRPM   = desc("fan_speed_rpm", "Fan speed (fans.rpm).", "fan")
+	fanRatio = desc("fan_speed_ratio", "Fan speed as a fraction of maximum (fans.speedPerc).", "fan")
+
+	blocksFound        = desc("blocks_found_total", "Blocks found over the lifetime of the device (totalFoundBlocks).")
+	sessionBlocksFound = desc("session_blocks_found", "Blocks found since the last restart (foundBlocks).")
+	bestDifficulty     = desc("best_difficulty", "Best share difficulty over the lifetime of the device (bestDiff).")
+	duplicateNonces    = desc("duplicate_hw_nonces_total", "Duplicate nonces returned by the hardware (duplicateHWNonces).")
+
+	usingFallback = desc("stratum_using_fallback", "Whether the device is mining on the fallback pool (stratum.usingFallback).")
+	poolMode      = desc("stratum_pool_mode", "Active pool mode, 1 for the current mode (stratum.activePoolMode).", "mode")
+
+	poolLabelHelp     = " In failover mode the device reports only the selected pool, so pool 0 is whichever pool is active."
+	poolConnected     = desc("pool_connected", "Whether the stratum connection is established (stratum.pools.connected)."+poolLabelHelp, "pool")
+	poolDifficulty    = desc("pool_difficulty", "Share difficulty set by the pool (stratum.pools.poolDifficulty)."+poolLabelHelp, "pool")
+	networkDifficulty = desc("network_difficulty", "Bitcoin network difficulty reported by the pool (stratum.pools.networkDifficulty)."+poolLabelHelp, "pool")
+	poolAccepted      = desc("pool_shares_accepted_total", "Shares accepted by the pool (stratum.pools.accepted)."+poolLabelHelp, "pool")
+	poolRejected      = desc("pool_shares_rejected_total", "Shares rejected by the pool (stratum.pools.rejected)."+poolLabelHelp, "pool")
+	poolBestDiff      = desc("pool_best_difficulty", "Best share difficulty submitted to the pool this session (stratum.pools.bestDiff)."+poolLabelHelp, "pool")
+	poolPingRTT       = desc("pool_ping_rtt_seconds", "Round trip time to the pool (stratum.pools.pingRtt)."+poolLabelHelp, "pool")
+	poolPingLoss      = desc("pool_ping_loss_ratio", "Fraction of ping packets lost to the pool (stratum.pools.pingLoss)."+poolLabelHelp, "pool")
+
+	uptime   = desc("uptime_seconds", "Time since the last restart (uptimeSeconds).")
+	wifiRSSI = desc("wifi_rssi_dbm", "WiFi signal strength (wifiRSSI).")
+	freeHeap = desc("free_heap_bytes", "Free heap per memory area (freeHeap, freeHeapInt).", "memory")
 )
 
 // Collector scrapes a NerdQAxe device on every Prometheus collection.
@@ -76,13 +90,18 @@ func New(client *nerdqaxe.Client, logger *slog.Logger) *Collector {
 	return &Collector{client: client, logger: logger}
 }
 
-// Describe implements prometheus.Collector. It is left unimplemented so that
-// metrics are only described from what an actual scrape returns.
+// Describe implements prometheus.Collector. It sends no descriptors, making
+// this an unchecked collector: metrics are only described from what an actual
+// scrape returns.
 func (c *Collector) Describe(ch chan<- *prometheus.Desc) {}
 
-// Collect implements prometheus.Collector.
+// Collect implements prometheus.Collector. It queries the device once, so that
+// scrapes stay synchronous with Prometheus and no state is shared between them.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
+	start := time.Now()
 	i, err := c.client.SystemInfo(context.Background())
+	ch <- gauge(scrapeDuration, time.Since(start).Seconds())
+
 	if err != nil {
 		c.logger.Error("scrape failed", "target", c.client.Target(), "err", err)
 		ch <- gauge(up, 0)
@@ -94,17 +113,13 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		i.DeviceModel, i.ASICModel, strconv.Itoa(i.ASICCount),
 		i.Hostname, i.HostIP, i.MacAddr, i.Version, i.SSID)
 
-	ch <- gauge(hashRate, i.HashRate*gigahashPerHash, "current")
-	ch <- gauge(hashRate, i.HashRate1m*gigahashPerHash, "1m")
-	ch <- gauge(hashRate, i.HashRate10m*gigahashPerHash, "10m")
-	ch <- gauge(hashRate, i.HashRate1h*gigahashPerHash, "1h")
-	ch <- gauge(hashRate, i.HashRate1d*gigahashPerHash, "1d")
+	ch <- gauge(hashRate, i.HashRate*gigahashPerHash)
 
 	ch <- gauge(power, i.Power)
 	ch <- gauge(inputVoltage, i.Voltage/millivoltPerVolt)
 	ch <- gauge(inputCurrent, i.CurrentA)
-	ch <- gauge(coreVoltage, i.CoreVoltage/millivoltPerVolt, "configured")
-	ch <- gauge(coreVoltage, i.CoreVoltageActual/millivoltPerVolt, "measured")
+	ch <- gauge(coreVoltage, i.CoreVoltageActual/millivoltPerVolt)
+	ch <- gauge(coreVoltageConfigured, i.CoreVoltage/millivoltPerVolt)
 	ch <- gauge(frequency, i.Frequency*hertzPerMegahertz)
 	ch <- gauge(shutdown, boolToFloat(i.Shutdown))
 
@@ -121,16 +136,16 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		ch <- gauge(fanRatio, fan.SpeedPerc/percentPerRatio, fan.Label)
 	}
 
-	ch <- counter(sharesAccepted, i.SharesAccepted)
-	ch <- counter(sharesRejected, i.SharesRejected)
 	ch <- counter(blocksFound, i.TotalFoundBlocks)
 	ch <- gauge(sessionBlocksFound, i.FoundBlocks)
 	ch <- gauge(bestDifficulty, i.BestDiff)
-	ch <- gauge(bestSessionDifficulty, i.BestSessionDiff)
 	ch <- counter(duplicateNonces, i.DuplicateHWNonces)
 
 	ch <- gauge(usingFallback, boolToFloat(i.Stratum.UsingFallback))
-	ch <- gauge(poolMode, float64(i.Stratum.PoolMode))
+	for mode, label := range poolModes {
+		ch <- gauge(poolMode, boolToFloat(mode == i.Stratum.PoolMode), label)
+	}
+
 	for n, pool := range i.Stratum.Pools {
 		id := strconv.Itoa(n)
 		ch <- gauge(poolConnected, boolToFloat(pool.Connected), id)
@@ -147,8 +162,6 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	ch <- gauge(wifiRSSI, i.WifiRSSI)
 	ch <- gauge(freeHeap, i.FreeHeap, "spiram")
 	ch <- gauge(freeHeap, i.FreeHeapInt, "internal")
-	ch <- gauge(pingRTT, i.LastPingRTT/millisecondPerSecond)
-	ch <- gauge(pingLoss, i.RecentPingLos)
 }
 
 func gauge(d *prometheus.Desc, v float64, labels ...string) prometheus.Metric {
