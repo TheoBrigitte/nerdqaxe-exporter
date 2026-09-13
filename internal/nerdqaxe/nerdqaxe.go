@@ -106,6 +106,11 @@ func New(target string, timeout time.Duration) (*Client, error) {
 	if u.Host == "" {
 		return nil, fmt.Errorf("invalid target %q: missing host", target)
 	}
+	// A zero timeout means no timeout at all in http.Client, which would let
+	// a scrape hang forever against an unresponsive device.
+	if timeout <= 0 {
+		return nil, fmt.Errorf("invalid timeout %s: must be positive", timeout)
+	}
 
 	return &Client{
 		target: u.Scheme + "://" + u.Host,
