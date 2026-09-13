@@ -138,7 +138,7 @@ func (c *Client) SystemInfo(ctx context.Context) (*SystemInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("request %s: %w", req.URL, err)
 	}
-	defer res.Body.Close()
+	defer res.Body.Close() // nolint:errcheck
 
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%s returned unexpected status %s", req.URL, res.Status)

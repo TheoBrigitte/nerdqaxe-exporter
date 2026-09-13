@@ -146,7 +146,7 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		promhttp.HandlerFor(prometheus.Gatherers{registry, scrapeRegistry}, handlerOpts).ServeHTTP(w, r)
 	}))
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "<html><head><title>NerdQAxe Exporter</title></head><body>\n"+
+		fmt.Fprintf(w, "<html><head><title>NerdQAxe Exporter</title></head><body>\n"+ // nolint:errcheck
 			"<h1>NerdQAxe Exporter</h1>\n<p>Scraping <code>%s</code></p>\n"+
 			"<p><a href=%q>Metrics</a></p>\n</body></html>\n", client.Target(), path)
 	})
@@ -166,7 +166,7 @@ func run(ctx context.Context, cmd *cli.Command) error {
 	// Let an in-flight scrape finish before going away, so that Prometheus
 	// gets a complete response rather than a scrape error.
 	shutdownDone := make(chan struct{})
-	go func() {
+	go func() { // nolint:gosec //
 		defer close(shutdownDone)
 		<-ctx.Done()
 

@@ -39,7 +39,10 @@ func TestCollect(t *testing.T) {
 		if r.URL.Path != "/api/system/info" {
 			t.Errorf("unexpected path %q", r.URL.Path)
 		}
-		w.Write(fixture)
+		_, err := w.Write(fixture)
+		if err != nil {
+			t.Fatalf("write fixture: %v", err)
+		}
 	})
 
 	expected := `
