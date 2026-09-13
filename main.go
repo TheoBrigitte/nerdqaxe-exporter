@@ -127,7 +127,7 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		versioncollector.NewCollector("nerdqaxe_exporter"),
 	)
-	deviceCollector := collector.New(client, logger)
+	deviceCollector := collector.New(client, logger, info)
 
 	// Initialize HTTP server handlers
 	path := cmd.String("web.metrics-path")

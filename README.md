@@ -23,12 +23,17 @@ seconds, degrees Celsius).
 ## Metrics
 
 Each description names the `/api/system/info` field the metric is built from.
+Every metric carries the `hostname` and `mac` labels of the device it comes
+from, so that several devices can be told apart without joining on
+`nerdqaxe_info`. Both are read from the device on each scrape; a scrape that
+fails has no response to read them from, and reports `nerdqaxe_up 0` under the
+identity read at startup.
 
 | Metric | Description |
 | --- | --- |
 | `nerdqaxe_up` | Whether the last scrape of the device succeeded |
 | `nerdqaxe_scrape_duration_seconds` | Duration of the last query to the device |
-| `nerdqaxe_info` | Device identity, always 1. Labels: `device_model`, `asic_model`, `asic_count`, `hostname`, `ip`, `mac`, `version`, `ssid` |
+| `nerdqaxe_info` | Device identity, always 1. Labels: `device_model`, `asic_model`, `asic_count`, `ip`, `version`, `ssid` |
 | `nerdqaxe_hashrate_hashes_per_second` | Current hashrate |
 | `nerdqaxe_power_watts` | Power drawn by the device |
 | `nerdqaxe_input_voltage_volts` | Input voltage |

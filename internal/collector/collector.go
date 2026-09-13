@@ -75,73 +75,133 @@ func stratumProtocol(p int) string {
 	return strconv.Itoa(p)
 }
 
-func desc(name, help string, labels ...string) *prometheus.Desc {
-	return prometheus.NewDesc(prometheus.BuildFQName(namespace, "", name), help, labels, nil)
-}
-
-// Metric descriptions name the field of /api/system/info they are built from,
-// so that users can trace a metric back to the device API.
-var (
-	up             = desc("up", "Whether the last scrape of the device succeeded.")
-	scrapeDuration = desc("scrape_duration_seconds", "Duration of the last query to the device.")
-	info           = desc("info", "Device identity, always 1 (deviceModel, ASICModel, asicCount, hostname, hostip, macAddr, version, ssid).",
-		"device_model", "asic_model", "asic_count", "hostname", "ip", "mac", "version", "ssid")
-
-	hashRate = desc("hashrate_hashes_per_second", "Current hashrate (hashRate).")
-
-	power                 = desc("power_watts", "Power drawn by the device (power).")
-	inputVoltage          = desc("input_voltage_volts", "Input voltage (voltage).")
-	inputCurrent          = desc("input_current_amperes", "Input current (currentA).")
-	coreVoltage           = desc("core_voltage_volts", "Measured ASIC core voltage (coreVoltageActual).")
-	coreVoltageConfigured = desc("core_voltage_configured_volts", "Configured ASIC core voltage (coreVoltage).")
-	frequency             = desc("asic_frequency_hertz", "Configured ASIC clock frequency (frequency).")
-	shutdown              = desc("shutdown", "Whether the device has shut down mining (shutdown).")
-
-	temperature  = desc("temperature_celsius", "Temperature per sensor (temp, vrTemp, vrTempInt).", "sensor")
-	asicTemp     = desc("asic_temperature_celsius", "Temperature per ASIC (asicTemps), reported as 0 on boards without per-ASIC sensors; the asic_max sensor of nerdqaxe_temperature_celsius is what the device acts on.", "asic")
-	overheatTemp = desc("overheat_temperature_celsius", "Temperature at which the device shuts down (overheat_temp).")
-
-	fanRPM   = desc("fan_speed_rpm", "Fan speed (fans.rpm).", "fan")
-	fanRatio = desc("fan_speed_ratio", "Fan speed as a fraction of maximum (fans.speedPerc).", "fan")
-
-	blocksFound        = desc("blocks_found_total", "Blocks found over the lifetime of the device (totalFoundBlocks).")
-	sessionBlocksFound = desc("session_blocks_found_total", "Blocks found since the last restart (foundBlocks).")
-	bestDifficulty     = desc("best_difficulty", "Best share difficulty over the lifetime of the device (bestDiff).")
-	sessionBestDiff    = desc("session_best_difficulty", "Best share difficulty since the last restart (bestSessionDiff).")
-	duplicateNonces    = desc("duplicate_hw_nonces_total", "Duplicate nonces returned by the hardware (duplicateHWNonces).")
-
-	stratumInfo = desc("stratum_info", "Configured stratum pool, always 1 (stratumURL, stratumPort, stratumTLS, stratumProtocol and their fallback counterparts). The role tells apart the primary and the fallback pool, which stratum_using_fallback resolves to a pool label.",
-		"role", "url", "port", "tls", "protocol")
-	usingFallback = desc("stratum_using_fallback", "Whether the device is mining on the fallback pool (stratum.usingFallback).")
-	poolMode      = desc("stratum_pool_mode", "Active pool mode, 1 for the current mode (stratum.activePoolMode).", "mode")
-
+// The help of the two labels shared by several pool metrics.
+const (
 	poolLabelHelp = " In failover mode the device reports only the selected pool, so pool 0 is whichever pool is active."
 	roleLabelHelp = " The role tells which configured pool this is."
-	poolConnected = desc("pool_connected", "Whether the stratum connection is established (stratum.pools.connected)."+poolLabelHelp+roleLabelHelp+" The url, port, tls and protocol labels are the same pool identity stratum_info carries.",
-		"pool", "role", "url", "port", "tls", "protocol")
-	poolDifficulty    = desc("pool_difficulty", "Share difficulty set by the pool (stratum.pools.poolDifficulty)."+poolLabelHelp, "pool")
-	networkDifficulty = desc("network_difficulty", "Bitcoin network difficulty reported by the pool (stratum.pools.networkDifficulty)."+poolLabelHelp, "pool")
-	poolAccepted      = desc("pool_shares_accepted_total", "Shares accepted by the pool (stratum.pools.accepted)."+poolLabelHelp, "pool")
-	poolRejected      = desc("pool_shares_rejected_total", "Shares rejected by the pool (stratum.pools.rejected)."+poolLabelHelp, "pool")
-	poolBestDiff      = desc("pool_best_difficulty", "Best share difficulty submitted to the pool this session (stratum.pools.bestDiff)."+poolLabelHelp, "pool")
-	poolPingRTT       = desc("pool_ping_rtt_seconds", "Round trip time to the pool (stratum.pools.pingRtt)."+poolLabelHelp+roleLabelHelp, "pool", "role")
-	poolPingLoss      = desc("pool_ping_loss_ratio", "Fraction of ping packets lost to the pool (stratum.pools.pingLoss)."+poolLabelHelp+roleLabelHelp, "pool", "role")
-
-	uptime   = desc("uptime_seconds", "Time since the last restart (uptimeSeconds).")
-	wifiRSSI = desc("wifi_rssi_dbm", "WiFi signal strength (wifiRSSI).")
-	freeHeap = desc("free_heap_bytes", "Free heap per memory area (freeHeap, freeHeapInt).", "memory")
 )
+
+// metrics are the descriptors of one device. Each description names the field
+// of /api/system/info the metric is built from, so that users can trace a
+// metric back to the device API.
+type metrics struct {
+	up                    *prometheus.Desc
+	scrapeDuration        *prometheus.Desc
+	info                  *prometheus.Desc
+	hashRate              *prometheus.Desc
+	power                 *prometheus.Desc
+	inputVoltage          *prometheus.Desc
+	inputCurrent          *prometheus.Desc
+	coreVoltage           *prometheus.Desc
+	coreVoltageConfigured *prometheus.Desc
+	frequency             *prometheus.Desc
+	shutdown              *prometheus.Desc
+	temperature           *prometheus.Desc
+	asicTemp              *prometheus.Desc
+	overheatTemp          *prometheus.Desc
+	fanRPM                *prometheus.Desc
+	fanRatio              *prometheus.Desc
+	blocksFound           *prometheus.Desc
+	sessionBlocksFound    *prometheus.Desc
+	bestDifficulty        *prometheus.Desc
+	sessionBestDiff       *prometheus.Desc
+	duplicateNonces       *prometheus.Desc
+	stratumInfo           *prometheus.Desc
+	usingFallback         *prometheus.Desc
+	poolMode              *prometheus.Desc
+	poolConnected         *prometheus.Desc
+	poolDifficulty        *prometheus.Desc
+	networkDifficulty     *prometheus.Desc
+	poolAccepted          *prometheus.Desc
+	poolRejected          *prometheus.Desc
+	poolBestDiff          *prometheus.Desc
+	poolPingRTT           *prometheus.Desc
+	poolPingLoss          *prometheus.Desc
+	uptime                *prometheus.Desc
+	wifiRSSI              *prometheus.Desc
+	freeHeap              *prometheus.Desc
+}
+
+// deviceLabels name the device a metric comes from, so that metrics from
+// several devices can be told apart without joining on nerdqaxe_info. The
+// device names itself, so they are variable labels whose values come from the
+// response of each scrape, and they come last in the label values of a metric.
+var deviceLabels = []string{"hostname", "mac"}
+
+// newMetrics builds the descriptors of the collector.
+func newMetrics() metrics {
+	desc := func(name, help string, labels ...string) *prometheus.Desc {
+		return prometheus.NewDesc(prometheus.BuildFQName(namespace, "", name), help, append(labels, deviceLabels...), nil)
+	}
+
+	return metrics{
+		up:             desc("up", "Whether the last scrape of the device succeeded."),
+		scrapeDuration: desc("scrape_duration_seconds", "Duration of the last query to the device."),
+		info: desc("info", "Device identity, always 1 (deviceModel, ASICModel, asicCount, hostip, version, ssid); hostname and macAddr label every metric.",
+			"device_model", "asic_model", "asic_count", "ip", "version", "ssid"),
+
+		hashRate: desc("hashrate_hashes_per_second", "Current hashrate (hashRate)."),
+
+		power:                 desc("power_watts", "Power drawn by the device (power)."),
+		inputVoltage:          desc("input_voltage_volts", "Input voltage (voltage)."),
+		inputCurrent:          desc("input_current_amperes", "Input current (currentA)."),
+		coreVoltage:           desc("core_voltage_volts", "Measured ASIC core voltage (coreVoltageActual)."),
+		coreVoltageConfigured: desc("core_voltage_configured_volts", "Configured ASIC core voltage (coreVoltage)."),
+		frequency:             desc("asic_frequency_hertz", "Configured ASIC clock frequency (frequency)."),
+		shutdown:              desc("shutdown", "Whether the device has shut down mining (shutdown)."),
+
+		temperature:  desc("temperature_celsius", "Temperature per sensor (temp, vrTemp, vrTempInt).", "sensor"),
+		asicTemp:     desc("asic_temperature_celsius", "Temperature per ASIC (asicTemps), reported as 0 on boards without per-ASIC sensors; the asic_max sensor of nerdqaxe_temperature_celsius is what the device acts on.", "asic"),
+		overheatTemp: desc("overheat_temperature_celsius", "Temperature at which the device shuts down (overheat_temp)."),
+
+		fanRPM:   desc("fan_speed_rpm", "Fan speed (fans.rpm).", "fan"),
+		fanRatio: desc("fan_speed_ratio", "Fan speed as a fraction of maximum (fans.speedPerc).", "fan"),
+
+		blocksFound:        desc("blocks_found_total", "Blocks found over the lifetime of the device (totalFoundBlocks)."),
+		sessionBlocksFound: desc("session_blocks_found_total", "Blocks found since the last restart (foundBlocks)."),
+		bestDifficulty:     desc("best_difficulty", "Best share difficulty over the lifetime of the device (bestDiff)."),
+		sessionBestDiff:    desc("session_best_difficulty", "Best share difficulty since the last restart (bestSessionDiff)."),
+		duplicateNonces:    desc("duplicate_hw_nonces_total", "Duplicate nonces returned by the hardware (duplicateHWNonces)."),
+
+		stratumInfo: desc("stratum_info", "Configured stratum pool, always 1 (stratumURL, stratumPort, stratumTLS, stratumProtocol and their fallback counterparts). The role tells apart the primary and the fallback pool, which stratum_using_fallback resolves to a pool label.",
+			"role", "url", "port", "tls", "protocol"),
+		usingFallback: desc("stratum_using_fallback", "Whether the device is mining on the fallback pool (stratum.usingFallback)."),
+		poolMode:      desc("stratum_pool_mode", "Active pool mode, 1 for the current mode (stratum.activePoolMode).", "mode"),
+
+		poolConnected: desc("pool_connected", "Whether the stratum connection is established (stratum.pools.connected)."+poolLabelHelp+roleLabelHelp+" The url, port, tls and protocol labels are the same pool identity stratum_info carries.",
+			"pool", "role", "url", "port", "tls", "protocol"),
+		poolDifficulty:    desc("pool_difficulty", "Share difficulty set by the pool (stratum.pools.poolDifficulty)."+poolLabelHelp, "pool"),
+		networkDifficulty: desc("network_difficulty", "Bitcoin network difficulty reported by the pool (stratum.pools.networkDifficulty)."+poolLabelHelp, "pool"),
+		poolAccepted:      desc("pool_shares_accepted_total", "Shares accepted by the pool (stratum.pools.accepted)."+poolLabelHelp, "pool"),
+		poolRejected:      desc("pool_shares_rejected_total", "Shares rejected by the pool (stratum.pools.rejected)."+poolLabelHelp, "pool"),
+		poolBestDiff:      desc("pool_best_difficulty", "Best share difficulty submitted to the pool this session (stratum.pools.bestDiff)."+poolLabelHelp, "pool"),
+		poolPingRTT:       desc("pool_ping_rtt_seconds", "Round trip time to the pool (stratum.pools.pingRtt)."+poolLabelHelp+roleLabelHelp, "pool", "role"),
+		poolPingLoss:      desc("pool_ping_loss_ratio", "Fraction of ping packets lost to the pool (stratum.pools.pingLoss)."+poolLabelHelp+roleLabelHelp, "pool", "role"),
+
+		uptime:   desc("uptime_seconds", "Time since the last restart (uptimeSeconds)."),
+		wifiRSSI: desc("wifi_rssi_dbm", "WiFi signal strength (wifiRSSI)."),
+		freeHeap: desc("free_heap_bytes", "Free heap per memory area (freeHeap, freeHeapInt).", "memory"),
+	}
+}
 
 // Collector scrapes a NerdQAxe device on every Prometheus collection.
 type Collector struct {
 	client *nerdqaxe.Client
 	logger zerolog.Logger
 	ctx    context.Context
+
+	// The device identity read at startup, which names a scrape that failed
+	// and has no response to read it from.
+	hostname, mac string
+
+	metrics
 }
 
-// New returns a Collector scraping the device behind client.
-func New(client *nerdqaxe.Client, logger zerolog.Logger) *Collector {
-	return &Collector{client: client, logger: logger, ctx: context.Background()}
+// New returns a Collector scraping the device behind client. The info it
+// reports names the device of a scrape that fails before any has succeeded.
+func New(client *nerdqaxe.Client, logger zerolog.Logger, info *nerdqaxe.SystemInfo) *Collector {
+	return &Collector{client: client, logger: logger, ctx: context.Background(),
+		hostname: info.Hostname, mac: info.MacAddr, metrics: newMetrics()}
 }
 
 // WithContext returns a copy of the Collector whose scrapes run under ctx, so
@@ -155,49 +215,49 @@ func (c *Collector) WithContext(ctx context.Context) *Collector {
 // Describe implements prometheus.Collector. It sends every descriptor the
 // collector can emit, so that inconsistencies are caught at registration time.
 func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- up
-	ch <- scrapeDuration
-	ch <- info
+	ch <- c.up
+	ch <- c.scrapeDuration
+	ch <- c.info
 
-	ch <- hashRate
+	ch <- c.hashRate
 
-	ch <- power
-	ch <- inputVoltage
-	ch <- inputCurrent
-	ch <- coreVoltage
-	ch <- coreVoltageConfigured
-	ch <- frequency
-	ch <- shutdown
+	ch <- c.power
+	ch <- c.inputVoltage
+	ch <- c.inputCurrent
+	ch <- c.coreVoltage
+	ch <- c.coreVoltageConfigured
+	ch <- c.frequency
+	ch <- c.shutdown
 
-	ch <- temperature
-	ch <- asicTemp
-	ch <- overheatTemp
+	ch <- c.temperature
+	ch <- c.asicTemp
+	ch <- c.overheatTemp
 
-	ch <- fanRPM
-	ch <- fanRatio
+	ch <- c.fanRPM
+	ch <- c.fanRatio
 
-	ch <- blocksFound
-	ch <- sessionBlocksFound
-	ch <- bestDifficulty
-	ch <- sessionBestDiff
-	ch <- duplicateNonces
+	ch <- c.blocksFound
+	ch <- c.sessionBlocksFound
+	ch <- c.bestDifficulty
+	ch <- c.sessionBestDiff
+	ch <- c.duplicateNonces
 
-	ch <- stratumInfo
-	ch <- usingFallback
-	ch <- poolMode
+	ch <- c.stratumInfo
+	ch <- c.usingFallback
+	ch <- c.poolMode
 
-	ch <- poolConnected
-	ch <- poolDifficulty
-	ch <- networkDifficulty
-	ch <- poolAccepted
-	ch <- poolRejected
-	ch <- poolBestDiff
-	ch <- poolPingRTT
-	ch <- poolPingLoss
+	ch <- c.poolConnected
+	ch <- c.poolDifficulty
+	ch <- c.networkDifficulty
+	ch <- c.poolAccepted
+	ch <- c.poolRejected
+	ch <- c.poolBestDiff
+	ch <- c.poolPingRTT
+	ch <- c.poolPingLoss
 
-	ch <- uptime
-	ch <- wifiRSSI
-	ch <- freeHeap
+	ch <- c.uptime
+	ch <- c.wifiRSSI
+	ch <- c.freeHeap
 }
 
 // Collect implements prometheus.Collector. It queries the device once, so that
@@ -205,74 +265,83 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	start := time.Now()
 	i, err := c.client.SystemInfo(c.ctx)
-	ch <- gauge(scrapeDuration, time.Since(start).Seconds())
+	duration := time.Since(start).Seconds()
+
+	// The device names itself, so take the identity from the response of this
+	// scrape, and fall back to the one read at startup when it did not answer.
+	hostname, mac := c.hostname, c.mac
+	if err == nil {
+		hostname, mac = i.Hostname, i.MacAddr
+	}
+
+	ch <- gauge(c.scrapeDuration, duration, hostname, mac)
 
 	if err != nil {
 		c.logger.Error().Err(err).Str("target", c.client.Target()).Msg("scrape failed")
-		ch <- gauge(up, 0)
+		ch <- gauge(c.up, 0, hostname, mac)
 		return
 	}
-	ch <- gauge(up, 1)
+	ch <- gauge(c.up, 1, hostname, mac)
 
-	ch <- gauge(info, 1,
+	ch <- gauge(c.info, 1,
 		i.DeviceModel, i.ASICModel, strconv.Itoa(i.ASICCount),
-		i.Hostname, i.HostIP, i.MacAddr, i.Version, i.SSID)
+		i.HostIP, i.Version, i.SSID, hostname, mac)
 
-	ch <- gauge(hashRate, i.HashRate*gigahashPerHash)
+	ch <- gauge(c.hashRate, i.HashRate*gigahashPerHash, hostname, mac)
 
-	ch <- gauge(power, i.Power)
-	ch <- gauge(inputVoltage, i.Voltage/millivoltPerVolt)
-	ch <- gauge(inputCurrent, i.CurrentA)
-	ch <- gauge(coreVoltage, i.CoreVoltageActual/millivoltPerVolt)
-	ch <- gauge(coreVoltageConfigured, i.CoreVoltage/millivoltPerVolt)
-	ch <- gauge(frequency, i.Frequency*hertzPerMegahertz)
-	ch <- gauge(shutdown, boolToFloat(i.Shutdown))
+	ch <- gauge(c.power, i.Power, hostname, mac)
+	ch <- gauge(c.inputVoltage, i.Voltage/millivoltPerVolt, hostname, mac)
+	ch <- gauge(c.inputCurrent, i.CurrentA, hostname, mac)
+	ch <- gauge(c.coreVoltage, i.CoreVoltageActual/millivoltPerVolt, hostname, mac)
+	ch <- gauge(c.coreVoltageConfigured, i.CoreVoltage/millivoltPerVolt, hostname, mac)
+	ch <- gauge(c.frequency, i.Frequency*hertzPerMegahertz, hostname, mac)
+	ch <- gauge(c.shutdown, boolToFloat(i.Shutdown), hostname, mac)
 
-	ch <- gauge(temperature, i.Temp, "asic_max")
-	ch <- gauge(temperature, i.VRTemp, "voltage_regulator")
-	ch <- gauge(temperature, i.VRTempInt, "voltage_regulator_internal")
+	ch <- gauge(c.temperature, i.Temp, "asic_max", hostname, mac)
+	ch <- gauge(c.temperature, i.VRTemp, "voltage_regulator", hostname, mac)
+	ch <- gauge(c.temperature, i.VRTempInt, "voltage_regulator_internal", hostname, mac)
 	for n, temp := range i.ASICTemps {
-		ch <- gauge(asicTemp, temp, strconv.Itoa(n))
+		ch <- gauge(c.asicTemp, temp, strconv.Itoa(n), hostname, mac)
 	}
-	ch <- gauge(overheatTemp, i.OverheatTemp)
+	ch <- gauge(c.overheatTemp, i.OverheatTemp, hostname, mac)
 
 	for _, fan := range i.Fans {
-		ch <- gauge(fanRPM, fan.RPM, fan.Label)
-		ch <- gauge(fanRatio, fan.SpeedPerc/percentPerRatio, fan.Label)
+		ch <- gauge(c.fanRPM, fan.RPM, fan.Label, hostname, mac)
+		ch <- gauge(c.fanRatio, fan.SpeedPerc/percentPerRatio, fan.Label, hostname, mac)
 	}
 
-	ch <- counter(blocksFound, i.TotalFoundBlocks)
-	ch <- counter(sessionBlocksFound, i.FoundBlocks)
-	ch <- gauge(bestDifficulty, i.BestDiff)
-	ch <- gauge(sessionBestDiff, i.BestSessionDiff)
-	ch <- counter(duplicateNonces, i.DuplicateHWNonces)
+	ch <- counter(c.blocksFound, i.TotalFoundBlocks, hostname, mac)
+	ch <- counter(c.sessionBlocksFound, i.FoundBlocks, hostname, mac)
+	ch <- gauge(c.bestDifficulty, i.BestDiff, hostname, mac)
+	ch <- gauge(c.sessionBestDiff, i.BestSessionDiff, hostname, mac)
+	ch <- counter(c.duplicateNonces, i.DuplicateHWNonces, hostname, mac)
 
-	ch <- gauge(stratumInfo, 1, append([]string{rolePrimary}, stratumIdentity(i, rolePrimary)...)...)
-	ch <- gauge(stratumInfo, 1, append([]string{roleFallback}, stratumIdentity(i, roleFallback)...)...)
+	ch <- gauge(c.stratumInfo, 1, append(append([]string{rolePrimary}, stratumIdentity(i, rolePrimary)...), hostname, mac)...)
+	ch <- gauge(c.stratumInfo, 1, append(append([]string{roleFallback}, stratumIdentity(i, roleFallback)...), hostname, mac)...)
 
-	ch <- gauge(usingFallback, boolToFloat(i.Stratum.UsingFallback))
+	ch <- gauge(c.usingFallback, boolToFloat(i.Stratum.UsingFallback), hostname, mac)
 	for mode, label := range poolModes {
-		ch <- gauge(poolMode, boolToFloat(mode == i.Stratum.PoolMode), label)
+		ch <- gauge(c.poolMode, boolToFloat(mode == i.Stratum.PoolMode), label, hostname, mac)
 	}
 
 	for n, pool := range i.Stratum.Pools {
 		id := strconv.Itoa(n)
 		role := poolRole(i.Stratum, n)
-		ch <- gauge(poolConnected, boolToFloat(pool.Connected),
-			append([]string{id, role}, stratumIdentity(i, role)...)...)
-		ch <- gauge(poolDifficulty, pool.PoolDifficulty, id)
-		ch <- gauge(networkDifficulty, pool.NetworkDifficulty, id)
-		ch <- counter(poolAccepted, pool.Accepted, id)
-		ch <- counter(poolRejected, pool.Rejected, id)
-		ch <- gauge(poolBestDiff, pool.BestDiff, id)
-		ch <- gauge(poolPingRTT, pool.PingRTT/millisecondPerSecond, id, role)
-		ch <- gauge(poolPingLoss, pool.PingLoss, id, role)
+		ch <- gauge(c.poolConnected, boolToFloat(pool.Connected),
+			append(append([]string{id, role}, stratumIdentity(i, role)...), hostname, mac)...)
+		ch <- gauge(c.poolDifficulty, pool.PoolDifficulty, id, hostname, mac)
+		ch <- gauge(c.networkDifficulty, pool.NetworkDifficulty, id, hostname, mac)
+		ch <- counter(c.poolAccepted, pool.Accepted, id, hostname, mac)
+		ch <- counter(c.poolRejected, pool.Rejected, id, hostname, mac)
+		ch <- gauge(c.poolBestDiff, pool.BestDiff, id, hostname, mac)
+		ch <- gauge(c.poolPingRTT, pool.PingRTT/millisecondPerSecond, id, role, hostname, mac)
+		ch <- gauge(c.poolPingLoss, pool.PingLoss, id, role, hostname, mac)
 	}
 
-	ch <- gauge(uptime, i.UptimeSeconds)
-	ch <- gauge(wifiRSSI, i.WifiRSSI)
-	ch <- gauge(freeHeap, i.FreeHeap, "spiram")
-	ch <- gauge(freeHeap, i.FreeHeapInt, "internal")
+	ch <- gauge(c.uptime, i.UptimeSeconds, hostname, mac)
+	ch <- gauge(c.wifiRSSI, i.WifiRSSI, hostname, mac)
+	ch <- gauge(c.freeHeap, i.FreeHeap, "spiram", hostname, mac)
+	ch <- gauge(c.freeHeap, i.FreeHeapInt, "internal", hostname, mac)
 }
 
 func gauge(d *prometheus.Desc, v float64, labels ...string) prometheus.Metric {
