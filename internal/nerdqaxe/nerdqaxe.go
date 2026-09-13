@@ -94,7 +94,7 @@ type Client struct {
 	http   *http.Client
 }
 
-// New returns a Client querying the device at target, e.g. http://192.0.2.10.
+// New returns a Client querying the device at target, e.g. http://nerdqaxe.local.
 func New(target string, timeout time.Duration) (*Client, error) {
 	u, err := url.Parse(target)
 	if err != nil {

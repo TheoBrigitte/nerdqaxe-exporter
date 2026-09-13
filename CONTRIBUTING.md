@@ -12,7 +12,7 @@ make setup
 
 ```
 make build                      # build into build/<os>/<arch>/bin/
-make run TARGET=http://192.0.2.10
+make run TARGET=http://nerdqaxe.local
 make install                    # copy the binary to ~/.local/bin
 ```
 
@@ -24,7 +24,7 @@ Cross compile with `make build-amd64` / `make build-arm64`, or set `GOOS` and
 ```
 make docker                     # build the image for the host platform
 make docker-all                 # build for linux/amd64 and linux/arm64
-make run-docker TARGET=http://192.0.2.10
+make run-docker TARGET=http://nerdqaxe.local
 ```
 
 ## Test and lint

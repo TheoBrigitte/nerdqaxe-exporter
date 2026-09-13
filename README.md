@@ -69,13 +69,13 @@ Download a binary from the [releases page](https://github.com/TheoBrigitte/nerdq
 Docker image:
 
 ```
-docker run --rm -p 10055:10055 docker.io/theo01/nerdqaxe-exporter --target http://192.0.2.10
+docker run --rm -p 10055:10055 docker.io/theo01/nerdqaxe-exporter --target http://nerdqaxe.local
 ```
 
 ## Usage
 
 ```
-nerdqaxe-exporter --target http://192.0.2.10
+nerdqaxe-exporter --target http://nerdqaxe.local
 ```
 
 | Flag | Default | Description |
