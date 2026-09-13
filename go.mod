@@ -5,7 +5,7 @@ go 1.26.5
 require (
 	github.com/prometheus/common v0.70.1
 	github.com/rs/zerolog v1.35.1
-	github.com/urfave/cli/v3 v3.10.1
+	github.com/urfave/cli/v3 v3.11.0
 )
 
 require (
