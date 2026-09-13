@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## 0.1.0 - 2026-09-13
+
 ### Added
 
 - Prometheus exporter for the NerdQAxe firmware.
@@ -28,4 +30,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Image `docker.io/theo01/nerdqaxe-exporter`.
 - Grafana dashboard
 
-[Unreleased]: https://github.com/TheoBrigitte/nerdqaxe-exporter/tree/main
+[Unreleased]: https://github.com/TheoBrigitte/nerdqaxe-exporter/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/TheoBrigitte/nerdqaxe-exporter/releases/tag/v0.1.0
