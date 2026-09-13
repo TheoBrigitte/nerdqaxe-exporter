@@ -4,6 +4,7 @@ package collector
 import (
 	"context"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -357,4 +358,40 @@ func boolToFloat(b bool) float64 {
 		return 1
 	}
 	return 0
+}
+
+// Group collects several devices as one Prometheus collector. Devices share
+// the same descriptors, so they cannot be registered as separate collectors;
+// they are told apart by the hostname and mac labels they report.
+type Group []*Collector
+
+// WithContext returns a copy of the group whose scrapes run under ctx.
+func (g Group) WithContext(ctx context.Context) Group {
+	clone := make(Group, len(g))
+	for n, c := range g {
+		clone[n] = c.WithContext(ctx)
+	}
+	return clone
+}
+
+// Describe implements prometheus.Collector. Every device has the same
+// descriptors, so one of them describes the group.
+func (g Group) Describe(ch chan<- *prometheus.Desc) {
+	if len(g) > 0 {
+		g[0].Describe(ch)
+	}
+}
+
+// Collect implements prometheus.Collector. It queries every device at once, so
+// that a scrape takes as long as the slowest device rather than all of them.
+func (g Group) Collect(ch chan<- prometheus.Metric) {
+	var wg sync.WaitGroup
+	for _, c := range g {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			c.Collect(ch)
+		}()
+	}
+	wg.Wait()
 }

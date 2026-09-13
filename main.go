@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"os"
@@ -35,10 +36,10 @@ func main() {
 				Aliases: []string{"V"},
 				Usage:   "print only the version",
 			},
-			&cli.StringFlag{
+			&cli.StringSliceFlag{
 				Name:    "target",
 				Aliases: []string{"t"},
-				Usage:   "base `URL` of the NerdQAxe device, e.g. http://nerdqaxe.local",
+				Usage:   "base `URL` of a NerdQAxe device, e.g. http://nerdqaxe.local; repeat for several devices",
 				Sources: cli.EnvVars("NERDQAXE_TARGET"),
 			},
 			&cli.DurationFlag{
@@ -93,31 +94,16 @@ func run(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// target is not a required flag, so that --version works without it.
-	if cmd.String("target") == "" {
+	targets := cmd.StringSlice("target")
+	if len(targets) == 0 {
 		return fmt.Errorf("missing required flag --target")
 	}
 
-	// Initialize NerdQaxe client
-	client, err := nerdqaxe.New(cmd.String("target"), cmd.Duration("timeout"))
+	// Initialize one NerdQaxe client and collector per device.
+	deviceCollectors, err := newDeviceCollectors(ctx, targets, cmd.Duration("timeout"), logger)
 	if err != nil {
 		return err
 	}
-
-	// Fail fast on a target that cannot be scraped, rather than starting up
-	// and only reporting the problem through nerdqaxe_up on every scrape.
-	checkCtx, cancel := context.WithTimeout(ctx, cmd.Duration("timeout"))
-	defer cancel()
-
-	info, err := client.SystemInfo(checkCtx)
-	if err != nil {
-		return fmt.Errorf("failed to query device: %w", err)
-	}
-	logger.Info().
-		Str("device_model", info.DeviceModel).
-		Str("asic_model", info.ASICModel).
-		Str("hostname", info.Hostname).
-		Str("version", info.Version).
-		Msg("device reachable")
 
 	// Initialize Prometheus registry and register collectors. The device
 	// collector is registered per scrape instead, see below.
@@ -127,7 +113,6 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		versioncollector.NewCollector("nerdqaxe_exporter"),
 	)
-	deviceCollector := collector.New(client, logger, info)
 
 	// Initialize HTTP server handlers
 	path := cmd.String("web.metrics-path")
@@ -138,17 +123,22 @@ func run(ctx context.Context, cmd *cli.Command) error {
 	handlerOpts := promhttp.HandlerOpts{ErrorLog: promErrorLog{logger}}
 	mux := http.NewServeMux()
 	mux.Handle(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Bind the device collector to the request, so that the device query
-		// stops as soon as Prometheus gives up on the scrape.
+		// Bind the device collectors to the request, so that the device
+		// queries stop as soon as Prometheus gives up on the scrape. The
+		// group queries the devices in parallel.
 		scrapeRegistry := prometheus.NewPedanticRegistry()
-		scrapeRegistry.MustRegister(deviceCollector.WithContext(r.Context()))
+		scrapeRegistry.MustRegister(deviceCollectors.WithContext(r.Context()))
 
 		promhttp.HandlerFor(prometheus.Gatherers{registry, scrapeRegistry}, handlerOpts).ServeHTTP(w, r)
 	}))
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+		var scraping strings.Builder
+		for _, target := range targets {
+			fmt.Fprintf(&scraping, "<li><code>%s</code></li>\n", html.EscapeString(target)) // nolint:errcheck
+		}
 		fmt.Fprintf(w, "<html><head><title>NerdQAxe Exporter</title></head><body>\n"+ // nolint:errcheck
-			"<h1>NerdQAxe Exporter</h1>\n<p>Scraping <code>%s</code></p>\n"+
-			"<p><a href=%q>Metrics</a></p>\n</body></html>\n", client.Target(), path)
+			"<h1>NerdQAxe Exporter</h1>\n<p>Scraping</p>\n<ul>\n%s</ul>\n"+
+			"<p><a href=%q>Metrics</a></p>\n</body></html>\n", scraping.String(), path)
 	})
 
 	// Initialize HTTP server
@@ -185,7 +175,7 @@ func run(ctx context.Context, cmd *cli.Command) error {
 	}()
 
 	// Start HTTP server and wait for shutdown or error
-	logger.Info().Str("address", address).Str("path", path).Str("target", client.Target()).Msg("listening")
+	logger.Info().Str("address", address).Str("path", path).Strs("targets", targets).Msg("listening")
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("HTTP server failed: %w", err)
 	}
@@ -195,6 +185,52 @@ func run(ctx context.Context, cmd *cli.Command) error {
 	<-shutdownDone
 
 	return nil
+}
+
+// newDeviceCollectors builds a collector per target. It queries every device
+// once, to fail fast on a target that cannot be scraped rather than starting
+// up and only reporting the problem through nerdqaxe_up on every scrape.
+func newDeviceCollectors(ctx context.Context, targets []string, timeout time.Duration, logger zerolog.Logger) (collector.Group, error) {
+	// Devices are told apart by the hostname and mac labels they report, so
+	// the same device listed twice would emit duplicate metrics.
+	seen := make(map[string]bool, len(targets))
+
+	collectors := make(collector.Group, 0, len(targets))
+	for _, target := range targets {
+		client, err := nerdqaxe.New(target, timeout)
+		if err != nil {
+			return nil, err
+		}
+		if seen[client.Target()] {
+			return nil, fmt.Errorf("duplicate target %q", client.Target())
+		}
+		seen[client.Target()] = true
+
+		info, err := checkDevice(ctx, client, timeout)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query device %s: %w", client.Target(), err)
+		}
+		logger.Info().
+			Str("target", client.Target()).
+			Str("device_model", info.DeviceModel).
+			Str("asic_model", info.ASICModel).
+			Str("hostname", info.Hostname).
+			Str("version", info.Version).
+			Msg("device reachable")
+
+		collectors = append(collectors, collector.New(client, logger, info))
+	}
+
+	return collectors, nil
+}
+
+// checkDevice queries a device once, under a timeout of its own so that the
+// startup check of one device does not eat into the budget of the next.
+func checkDevice(ctx context.Context, client *nerdqaxe.Client, timeout time.Duration) (*nerdqaxe.SystemInfo, error) {
+	checkCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	return client.SystemInfo(checkCtx)
 }
 
 // newLogger builds the root logger from the --log.level and --log.format flags.
