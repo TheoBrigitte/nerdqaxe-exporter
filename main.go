@@ -93,6 +93,8 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	logger.Info().Str("version", version.Version).Str("revision", version.Revision).Msg("starting nerdqaxe-exporter")
+
 	// target is not a required flag, so that --version works without it.
 	targets := cmd.StringSlice("target")
 	if len(targets) == 0 {
