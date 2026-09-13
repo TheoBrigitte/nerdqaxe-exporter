@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -31,17 +32,12 @@ func main() {
 				Name:    "version",
 				Aliases: []string{"V"},
 				Usage:   "print only the version",
-				Action: func(context.Context, *cli.Command, bool) error {
-					_, err := fmt.Print(version.Print("nerdqaxe-exporter"))
-					return err
-				},
 			},
 			&cli.StringFlag{
-				Name:     "target",
-				Aliases:  []string{"t"},
-				Usage:    "base `URL` of the NerdQAxe device, e.g. http://192.0.2.10",
-				Sources:  cli.EnvVars("NERDQAXE_TARGET"),
-				Required: true,
+				Name:    "target",
+				Aliases: []string{"t"},
+				Usage:   "base `URL` of the NerdQAxe device, e.g. http://192.0.2.10",
+				Sources: cli.EnvVars("NERDQAXE_TARGET"),
 			},
 			&cli.DurationFlag{
 				Name:  "timeout",
@@ -54,7 +50,7 @@ func main() {
 				Value: ":10055",
 			},
 			&cli.StringFlag{
-				Name:  "web.telemetry-path",
+				Name:  "web.metrics-path",
 				Usage: "`path` under which to expose metrics",
 				Value: "/metrics",
 			},
@@ -75,25 +71,49 @@ func main() {
 func run(ctx context.Context, cmd *cli.Command) error {
 	logger := slog.Default()
 
+	// --version is not a scrape, print the version and stop here.
+	if cmd.Bool("version") {
+		_, err := fmt.Print(version.Print("nerdqaxe-exporter"))
+		return err
+	}
+
+	// target is not a required flag, so that --version works without it.
+	if cmd.String("target") == "" {
+		return fmt.Errorf("missing required flag --target")
+	}
+
 	// Initialize NerdQaxe client
 	client, err := nerdqaxe.New(cmd.String("target"), cmd.Duration("timeout"))
 	if err != nil {
 		return err
 	}
 
-	// Initialize Prometheus registry and register collectors
+	// Initialize Prometheus registry and register collectors. The device
+	// collector is registered per scrape instead, see below.
 	registry := prometheus.NewPedanticRegistry()
 	registry.MustRegister(
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		versioncollector.NewCollector("nerdqaxe_exporter"),
-		collector.New(client, logger),
 	)
+	deviceCollector := collector.New(client, logger)
 
 	// Initialize HTTP server handlers
-	path := cmd.String("web.telemetry-path")
+	path := cmd.String("web.metrics-path")
+	if !strings.HasPrefix(path, "/") {
+		return fmt.Errorf("invalid metrics path %q: must start with /", path)
+	}
+
+	handlerOpts := promhttp.HandlerOpts{ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError)}
 	mux := http.NewServeMux()
-	mux.Handle(path, promhttp.HandlerFor(registry, promhttp.HandlerOpts{ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError)}))
+	mux.Handle(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Bind the device collector to the request, so that the device query
+		// stops as soon as Prometheus gives up on the scrape.
+		scrapeRegistry := prometheus.NewPedanticRegistry()
+		scrapeRegistry.MustRegister(deviceCollector.WithContext(r.Context()))
+
+		promhttp.HandlerFor(prometheus.Gatherers{registry, scrapeRegistry}, handlerOpts).ServeHTTP(w, r)
+	}))
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "<html><head><title>NerdQAxe Exporter</title></head><body>\n"+
 			"<h1>NerdQAxe Exporter</h1>\n<p>Scraping <code>%s</code></p>\n"+

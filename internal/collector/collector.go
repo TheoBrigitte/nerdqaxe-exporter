@@ -83,11 +83,20 @@ var (
 type Collector struct {
 	client *nerdqaxe.Client
 	logger *slog.Logger
+	ctx    context.Context
 }
 
 // New returns a Collector scraping the device behind client.
 func New(client *nerdqaxe.Client, logger *slog.Logger) *Collector {
-	return &Collector{client: client, logger: logger}
+	return &Collector{client: client, logger: logger, ctx: context.Background()}
+}
+
+// WithContext returns a copy of the Collector whose scrapes run under ctx, so
+// that a device query stops when Prometheus gives up on the scrape.
+func (c *Collector) WithContext(ctx context.Context) *Collector {
+	clone := *c
+	clone.ctx = ctx
+	return &clone
 }
 
 // Describe implements prometheus.Collector. It sends every descriptor the
@@ -140,7 +149,7 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 // scrapes stay synchronous with Prometheus and no state is shared between them.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	start := time.Now()
-	i, err := c.client.SystemInfo(context.Background())
+	i, err := c.client.SystemInfo(c.ctx)
 	ch <- gauge(scrapeDuration, time.Since(start).Seconds())
 
 	if err != nil {
