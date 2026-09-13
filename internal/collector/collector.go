@@ -59,6 +59,7 @@ var (
 	blocksFound        = desc("blocks_found_total", "Blocks found over the lifetime of the device (totalFoundBlocks).")
 	sessionBlocksFound = desc("session_blocks_found_total", "Blocks found since the last restart (foundBlocks).")
 	bestDifficulty     = desc("best_difficulty", "Best share difficulty over the lifetime of the device (bestDiff).")
+	sessionBestDiff    = desc("session_best_difficulty", "Best share difficulty since the last restart (bestSessionDiff).")
 	duplicateNonces    = desc("duplicate_hw_nonces_total", "Duplicate nonces returned by the hardware (duplicateHWNonces).")
 
 	usingFallback = desc("stratum_using_fallback", "Whether the device is mining on the fallback pool (stratum.usingFallback).")
@@ -126,6 +127,7 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- blocksFound
 	ch <- sessionBlocksFound
 	ch <- bestDifficulty
+	ch <- sessionBestDiff
 	ch <- duplicateNonces
 
 	ch <- usingFallback
@@ -189,6 +191,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	ch <- counter(blocksFound, i.TotalFoundBlocks)
 	ch <- counter(sessionBlocksFound, i.FoundBlocks)
 	ch <- gauge(bestDifficulty, i.BestDiff)
+	ch <- gauge(sessionBestDiff, i.BestSessionDiff)
 	ch <- counter(duplicateNonces, i.DuplicateHWNonces)
 
 	ch <- gauge(usingFallback, boolToFloat(i.Stratum.UsingFallback))
