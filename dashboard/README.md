@@ -34,3 +34,19 @@ Two variables drive the dashboard:
 | Temperatures | Board and ASIC temperatures, fan speed in RPM and as a fraction of maximum |
 | Power | Power trend, voltages and currents, efficiency in J/TH, ASIC frequency and status |
 | Mining Pool & Network | Share rate, accepted and rejected shares, pool ping RTT and loss, WiFi signal strength |
+
+## Thresholds
+
+Most panels use a single threshold step, so their colour is constant. The panels
+below change colour with the value:
+
+| Panel | Row | Thresholds | Source |
+| --- | --- | --- | --- |
+| ASIC Temperature (gauge) | Overview | blue below 50 °C, green from 50 °C, yellow from 65 °C, red from 75 °C | [Bitaxe overclocking guide](https://www.solosatoshi.com/bitaxe-overclocking-guide/) |
+| Temperature (bar gauge) | Temperatures | blue below 50 °C, green from 50 °C, yellow from 65 °C, red from 75 °C | [Bitaxe overclocking guide](https://www.solosatoshi.com/bitaxe-overclocking-guide/) |
+| Power Draw (gauge) | Overview | green below 100 W, yellow from 100 W, red from 150 W | |
+| Shares, *Rejected ratio* value | Mining Pool & Network | green below 1 %, yellow from 1 %, red from 5 % | [Why AtlasPool](https://atlaspool.io/why-atlaspool.html) |
+| Pool Ping (gauge) | Mining Pool & Network | green below 20 ms, yellow from 20 ms, red from 70 ms | [Block notification speed](https://atlaspool.io/resources/articles/block-notification-speed) |
+
+The gauges take no explicit minimum or maximum, so Grafana scales them to the
+data. Fan speed uses percentage-mode thresholds against its 0–1 range.
