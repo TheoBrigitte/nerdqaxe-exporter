@@ -45,17 +45,19 @@ Each description names the `/api/system/info` field the metric is built from.
 | `nerdqaxe_blocks_found_total` | Blocks found over the lifetime of the device |
 | `nerdqaxe_session_blocks_found_total` | Blocks found since the last restart |
 | `nerdqaxe_best_difficulty` | Best share difficulty over the lifetime of the device |
+| `nerdqaxe_session_best_difficulty` | Best share difficulty since the last restart |
 | `nerdqaxe_duplicate_hw_nonces_total` | Duplicate nonces returned by the hardware |
+| `nerdqaxe_stratum_info` | Configured stratum pool, always 1, per `role`: `primary` or `fallback`, with `url`, `port`, `tls` and `protocol` |
 | `nerdqaxe_stratum_using_fallback` | Whether the device is mining on the fallback pool |
 | `nerdqaxe_stratum_pool_mode` | Active pool mode, 1 for the current `mode`: `failover` or `dual` |
-| `nerdqaxe_pool_connected` | Whether the stratum connection is established, per `pool` |
+| `nerdqaxe_pool_connected` | Whether the stratum connection is established, per `pool` and `role`, with the `url`, `port`, `tls` and `protocol` of that pool |
 | `nerdqaxe_pool_difficulty` | Share difficulty set by the pool, per `pool` |
 | `nerdqaxe_network_difficulty` | Bitcoin network difficulty reported by the pool, per `pool` |
 | `nerdqaxe_pool_shares_accepted_total` | Shares accepted by the pool, per `pool` |
 | `nerdqaxe_pool_shares_rejected_total` | Shares rejected by the pool, per `pool` |
 | `nerdqaxe_pool_best_difficulty` | Best share difficulty submitted to the pool this session, per `pool` |
-| `nerdqaxe_pool_ping_rtt_seconds` | Round trip time to the pool, per `pool` |
-| `nerdqaxe_pool_ping_loss_ratio` | Fraction of ping packets lost to the pool, per `pool` |
+| `nerdqaxe_pool_ping_rtt_seconds` | Round trip time to the pool, per `pool` and `role` |
+| `nerdqaxe_pool_ping_loss_ratio` | Fraction of ping packets lost to the pool, per `pool` and `role` |
 | `nerdqaxe_uptime_seconds` | Time since the last restart |
 | `nerdqaxe_wifi_rssi_dbm` | WiFi signal strength |
 | `nerdqaxe_free_heap_bytes` | Free heap per `memory` area: `spiram`, `internal` |
@@ -63,13 +65,33 @@ Each description names the `/api/system/info` field the metric is built from.
 A failed device query is reported as `nerdqaxe_up 0` rather than an HTTP error,
 so the exporter's own process metrics stay available.
 
-Shares and best session difficulty are per pool. Sum them for a device total:
+Shares are per pool in dual mode, and a single total over both pools in failover
+mode. Sum them for a device total either way:
 `sum(rate(nerdqaxe_pool_shares_accepted_total[5m]))`. The device also reports
 1m, 10m, 1h and 1d hashrate averages; those are deliberately not exported, since
 Prometheus averages more accurately with `avg_over_time()`.
 
-The pool label is the pool's index in the device's pool list. In failover mode the device reports only the pool it is currently using, so pool="0" is the primary pool or the fallback
-depending on nerdqaxe_stratum_using_fallback.
+The pool label is the pool's index in the device's pool list, which alone does not
+name a pool: in dual mode the device reports both pools in slot order, and in
+failover mode only the pool it has selected. The `role` label resolves it to
+`primary` or `fallback`. `nerdqaxe_pool_connected` carries the pool's address
+directly, so the pool you are mining to is simply:
+
+```promql
+nerdqaxe_pool_connected == 1
+```
+
+The ping metrics carry `role` alone, and join to `nerdqaxe_stratum_info` for the
+address:
+
+```promql
+nerdqaxe_pool_ping_rtt_seconds * on(instance, role) group_left(url, port) nerdqaxe_stratum_info
+```
+
+Only the connection metrics carry `role`. In failover mode the firmware keeps a
+single set of share, difficulty and best difficulty counters for both pools, so
+attributing those to one pool would be wrong, and the label would flip on a
+failover and break `rate()`. Those metrics stay labelled by `pool` alone.
 
 All of the above are defined in
 [`internal/collector/collector.go`](internal/collector/collector.go).

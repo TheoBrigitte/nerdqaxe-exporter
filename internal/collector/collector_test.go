@@ -79,12 +79,12 @@ nerdqaxe_input_current_amperes 6.148438
 # HELP nerdqaxe_input_voltage_volts Input voltage (voltage).
 # TYPE nerdqaxe_input_voltage_volts gauge
 nerdqaxe_input_voltage_volts 12.04688
-# HELP nerdqaxe_pool_connected Whether the stratum connection is established (stratum.pools.connected). In failover mode the device reports only the selected pool, so pool 0 is whichever pool is active.
+# HELP nerdqaxe_pool_connected Whether the stratum connection is established (stratum.pools.connected). In failover mode the device reports only the selected pool, so pool 0 is whichever pool is active. The role tells which configured pool this is. The url, port, tls and protocol labels are the same pool identity stratum_info carries.
 # TYPE nerdqaxe_pool_connected gauge
-nerdqaxe_pool_connected{pool="0"} 1
-# HELP nerdqaxe_pool_ping_rtt_seconds Round trip time to the pool (stratum.pools.pingRtt). In failover mode the device reports only the selected pool, so pool 0 is whichever pool is active.
+nerdqaxe_pool_connected{pool="0",port="4333",protocol="stratum_v1",role="primary",tls="true",url="pool.example.com"} 1
+# HELP nerdqaxe_pool_ping_rtt_seconds Round trip time to the pool (stratum.pools.pingRtt). In failover mode the device reports only the selected pool, so pool 0 is whichever pool is active. The role tells which configured pool this is.
 # TYPE nerdqaxe_pool_ping_rtt_seconds gauge
-nerdqaxe_pool_ping_rtt_seconds{pool="0"} 0.016
+nerdqaxe_pool_ping_rtt_seconds{pool="0",role="primary"} 0.016
 # HELP nerdqaxe_pool_shares_accepted_total Shares accepted by the pool (stratum.pools.accepted). In failover mode the device reports only the selected pool, so pool 0 is whichever pool is active.
 # TYPE nerdqaxe_pool_shares_accepted_total counter
 nerdqaxe_pool_shares_accepted_total{pool="0"} 874110
@@ -159,5 +159,27 @@ nerdqaxe_up 0
 	// when the device did not answer.
 	if got := testutil.CollectAndCount(c, "nerdqaxe_scrape_duration_seconds"); got != 1 {
 		t.Errorf("scrape duration metrics = %d, want 1", got)
+	}
+}
+
+func TestPoolRole(t *testing.T) {
+	// The device reports both pools in slot order in dual mode, and only the
+	// selected pool in failover mode, so the index alone does not name a pool.
+	for _, tc := range []struct {
+		name     string
+		stratum  nerdqaxe.Stratum
+		index    int
+		expected string
+	}{
+		{"failover on primary", nerdqaxe.Stratum{PoolMode: 0, UsingFallback: false}, 0, "primary"},
+		{"failover on fallback", nerdqaxe.Stratum{PoolMode: 0, UsingFallback: true}, 0, "fallback"},
+		{"dual primary slot", nerdqaxe.Stratum{PoolMode: 1}, 0, "primary"},
+		{"dual fallback slot", nerdqaxe.Stratum{PoolMode: 1}, 1, "fallback"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := poolRole(tc.stratum, tc.index); got != tc.expected {
+				t.Errorf("poolRole(%+v, %d) = %q, want %q", tc.stratum, tc.index, got, tc.expected)
+			}
+		})
 	}
 }
