@@ -142,6 +142,15 @@ scrape_configs:
       - targets: ["localhost:10055"]
 ```
 
+## Dashboard
+
+A Grafana dashboard for these metrics lives in
+[`dashboard/`](dashboard/README.md).
+
+<p align="center">
+    <img src="dashboard/screenshot.png" alt="NerdQaxe++ Miner dashboard">
+</p>
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
