@@ -18,13 +18,14 @@ Prometheus exporter for the NerdQAxe firmware.
 
 It queries `/api/system/info` on the miner at each Prometheus scrape and exposes
 the result as metrics in base units (hashes/second, volts, amperes, watts,
-seconds, degrees Celsius).
+seconds, degrees Celsius). One exporter serves several miners: repeat
+`--target` and every device is queried in parallel on each scrape.
 
 ## Metrics
 
 Each description names the `/api/system/info` field the metric is built from.
 Every metric carries the `hostname` and `mac` labels of the device it comes
-from, so that several devices can be told apart without joining on
+from, so that the devices of a scrape can be told apart without joining on
 `nerdqaxe_info`. Both are read from the device on each scrape; a scrape that
 fails has no response to read them from, and reports `nerdqaxe_up 0` under the
 identity read at startup.
@@ -111,21 +112,22 @@ Docker image:
 
 ```
 $ docker run --rm -p 10055:10055 docker.io/theo01/nerdqaxe-exporter --target http://nerdqaxe.local
-{"level":"info","device_model":"NerdQAxe++","asic_model":"BM1370","hostname":"nerdqaxe","version":"V1.0.37.2-LTS","time":"2026-09-13T12:09:14Z","message":"device reachable"}
-{"level":"info","address":":10055","path":"/metrics","target":"http://nerdqaxe.local","time":"2026-09-13T12:09:14Z","message":"listening"}
+{"level":"info","target":"http://nerdqaxe.local","device_model":"NerdQAxe++","asic_model":"BM1370","hostname":"nerdqaxe","version":"V1.0.37.2-LTS","time":"2026-09-13T12:09:14Z","message":"device reachable"}
+{"level":"info","address":":10055","path":"/metrics","targets":["http://nerdqaxe.local"],"time":"2026-09-13T12:09:14Z","message":"listening"}
 ```
 
 ## Usage
 
 ```
-$ nerdqaxe-exporter --log.format console --target http://nerdqaxe.local
-INF device reachable asic_model=BM1370 device_model=NerdQAxe++ hostname=nerdqaxe version=V1.0.37.2-LTS
-INF listening address=:10055 path=/metrics target=http://nerdqaxe.local
+$ nerdqaxe-exporter --log.format console --target http://miner1.local --target http://miner2.local
+INF device reachable asic_model=BM1370 device_model=NerdQAxe++ hostname=miner1 target=http://miner1.local version=V1.0.37.2-LTS
+INF device reachable asic_model=BM1370 device_model=NerdQAxe++ hostname=miner2 target=http://miner2.local version=V1.0.37.2-LTS
+INF listening address=:10055 path=/metrics targets=["http://miner1.local","http://miner2.local"]
 ```
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--target`, `-t` | *required* | Base URL of the device, also read from `NERDQAXE_TARGET` |
+| `--target`, `-t` | *required* | Base URL of a device, repeat for several devices, also read from `NERDQAXE_TARGET` as a comma-separated list |
 | `--timeout` | `5s` | Timeout for a device query |
 | `--web.listen-address` | `:10055` | Address to listen on for telemetry |
 | `--web.metrics-path` | `/metrics` | Path under which to expose metrics |
@@ -133,7 +135,13 @@ INF listening address=:10055 path=/metrics target=http://nerdqaxe.local
 | `--log.format` | `json` | Log output format: `json`, `console` |
 | `--version`, `-V` | | Print the version and exit |
 
-Scrape config:
+Every device is queried in parallel on each scrape, so a scrape takes as long as
+the slowest device rather than all of them. A device that cannot be queried at
+startup stops the exporter; once it is running, a device that stops answering is
+reported as `nerdqaxe_up 0` and the others keep being exported.
+
+Scrape config, unchanged by the number of devices, which the `hostname` and
+`mac` labels tell apart:
 
 ```yaml
 scrape_configs:

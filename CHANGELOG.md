@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Prometheus exporter for the NerdQAxe firmware.
 - Device query on `/api/system/info` at each scrape.
+- Several devices in one exporter, with a repeatable `--target`, queried in
+  parallel on each scrape.
 - Metrics in base units for hashrate, power, voltage, current, ASIC frequency,
   temperature, fan speed, blocks found, share difficulty, stratum pools,
   uptime, WiFi signal and free heap.

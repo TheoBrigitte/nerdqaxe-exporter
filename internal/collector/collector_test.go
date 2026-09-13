@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -163,6 +164,38 @@ nerdqaxe_up{hostname="at-startup",mac="00:00:00:00:00:00"} 0
 	// when the device did not answer.
 	if got := testutil.CollectAndCount(c, "nerdqaxe_scrape_duration_seconds"); got != 1 {
 		t.Errorf("scrape duration metrics = %d, want 1", got)
+	}
+}
+
+func TestGroupCollect(t *testing.T) {
+	// Devices share the same descriptors, so a group is what tells them apart,
+	// by the hostname and mac each device reports.
+	device := func(hostname, mac string) *Collector {
+		return newCollector(t, func(w http.ResponseWriter, r *http.Request) {
+			_, err := fmt.Fprintf(w, `{"hostname":%q,"macAddr":%q}`, hostname, mac)
+			if err != nil {
+				t.Errorf("write response: %v", err)
+			}
+		})
+	}
+
+	// The second device is down, so that one failing device does not hide the
+	// other.
+	down := newCollector(t, func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	})
+
+	g := Group{device("miner1", "AA:BB:CC:DD:EE:01"), down}
+
+	expected := `
+# HELP nerdqaxe_up Whether the last scrape of the device succeeded.
+# TYPE nerdqaxe_up gauge
+nerdqaxe_up{hostname="at-startup",mac="00:00:00:00:00:00"} 0
+nerdqaxe_up{hostname="miner1",mac="AA:BB:CC:DD:EE:01"} 1
+`
+
+	if err := testutil.CollectAndCompare(g, strings.NewReader(expected), "nerdqaxe_up"); err != nil {
+		t.Error(err)
 	}
 }
 
