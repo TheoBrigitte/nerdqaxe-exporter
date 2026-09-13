@@ -1,4 +1,16 @@
-# NerdQAxe exporter
+<p align="center">
+    <img src="assets/nerdqaxe-exporter-square.png" alt="NerdQAxe exporter logo" height="150px">
+</p>
+
+<div align="center">
+
+  [![GitHub Release](https://img.shields.io/github/v/release/TheoBrigitte/nerdqaxe-exporter)](https://github.com/TheoBrigitte/nerdqaxe-exporter/releases/latest)
+  [![Go Reference](https://pkg.go.dev/badge/github.com/TheoBrigitte/nerdqaxe-exporter.svg)](https://pkg.go.dev/github.com/TheoBrigitte/nerdqaxe-exporter)
+  [![ci](https://github.com/TheoBrigitte/nerdqaxe-exporter/actions/workflows/ci.yaml/badge.svg)](https://github.com/TheoBrigitte/nerdqaxe-exporter/actions/workflows/ci.yaml)
+  ![GitHub Downloads](https://img.shields.io/github/downloads/TheoBrigitte/nerdqaxe-exporter/total)
+  [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/TheoBrigitte/nerdqaxe-exporter/badge)](https://scorecard.dev/viewer/?uri=github.com/TheoBrigitte/nerdqaxe-exporter)
+
+</div>
 
 Prometheus exporter for the NerdQAxe firmware.
 
@@ -69,13 +81,17 @@ Download a binary from the [releases page](https://github.com/TheoBrigitte/nerdq
 Docker image:
 
 ```
-docker run --rm -p 10055:10055 docker.io/theo01/nerdqaxe-exporter --target http://nerdqaxe.local
+$ docker run --rm -p 10055:10055 docker.io/theo01/nerdqaxe-exporter --target http://nerdqaxe.local
+{"level":"info","device_model":"NerdQAxe++","asic_model":"BM1370","hostname":"nerdqaxe","version":"V1.0.37.2-LTS","time":"2026-09-13T12:09:14Z","message":"device reachable"}
+{"level":"info","address":":10055","path":"/metrics","target":"http://nerdqaxe.local","time":"2026-09-13T12:09:14Z","message":"listening"}
 ```
 
 ## Usage
 
 ```
-nerdqaxe-exporter --target http://nerdqaxe.local
+$ nerdqaxe-exporter --log.format console --target http://nerdqaxe.local
+INF device reachable asic_model=BM1370 device_model=NerdQAxe++ hostname=nerdqaxe version=V1.0.37.2-LTS
+INF listening address=:10055 path=/metrics target=http://nerdqaxe.local
 ```
 
 | Flag | Default | Description |
