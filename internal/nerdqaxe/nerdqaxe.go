@@ -55,6 +55,17 @@ type SystemInfo struct {
 	DuplicateHWNonces float64 `json:"duplicateHWNonces"`
 	Stratum           Stratum `json:"stratum"`
 
+	// Stratum configuration. The device reports the primary and the fallback
+	// pool at the top level, whereas Stratum.Pools holds their live state.
+	StratumURL              string `json:"stratumURL"`
+	StratumPort             int    `json:"stratumPort"`
+	StratumTLS              bool   `json:"stratumTLS"`
+	StratumProtocol         int    `json:"stratumProtocol"`
+	FallbackStratumURL      string `json:"fallbackStratumURL"`
+	FallbackStratumPort     int    `json:"fallbackStratumPort"`
+	FallbackStratumTLS      bool   `json:"fallbackStratumTLS"`
+	FallbackStratumProtocol int    `json:"fallbackStratumProtocol"`
+
 	// System
 	UptimeSeconds float64 `json:"uptimeSeconds"`
 	WifiRSSI      float64 `json:"wifiRSSI"`

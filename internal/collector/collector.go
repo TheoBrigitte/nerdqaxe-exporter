@@ -27,6 +27,54 @@ const (
 // FAILOVER and DUAL, see StratumManager::PoolMode in the firmware.
 var poolModes = map[int]string{0: "failover", 1: "dual"}
 
+// dualPoolMode is the pool mode in which the device mines to both pools at
+// once and reports each of them in stratum.pools.
+const dualPoolMode = 1
+
+const (
+	rolePrimary  = "primary"
+	roleFallback = "fallback"
+)
+
+// poolRole names the configured pool an entry of stratum.pools belongs to. In
+// dual mode the device reports both pools in slot order, primary first. In
+// failover mode it reports only the pool it has selected, which usingFallback
+// names. See StratumManagerDualPool and StratumManagerFallback in the firmware.
+func poolRole(s nerdqaxe.Stratum, n int) string {
+	if s.PoolMode == dualPoolMode {
+		if n == dualPoolMode {
+			return roleFallback
+		}
+		return rolePrimary
+	}
+	if s.UsingFallback {
+		return roleFallback
+	}
+	return rolePrimary
+}
+
+// stratumIdentity returns the configured identity of a pool role, in the label
+// order shared by stratumInfo and poolConnected.
+func stratumIdentity(i *nerdqaxe.SystemInfo, role string) []string {
+	if role == roleFallback {
+		return []string{i.FallbackStratumURL, strconv.Itoa(i.FallbackStratumPort),
+			strconv.FormatBool(i.FallbackStratumTLS), stratumProtocol(i.FallbackStratumProtocol)}
+	}
+	return []string{i.StratumURL, strconv.Itoa(i.StratumPort),
+		strconv.FormatBool(i.StratumTLS), stratumProtocol(i.StratumProtocol)}
+}
+
+// stratumProtocols maps the device stratum protocol to a label value, see
+// StratumProtocol in the firmware.
+var stratumProtocols = map[int]string{0: "stratum_v1", 1: "stratum_v2"}
+
+func stratumProtocol(p int) string {
+	if name, ok := stratumProtocols[p]; ok {
+		return name
+	}
+	return strconv.Itoa(p)
+}
+
 func desc(name, help string, labels ...string) *prometheus.Desc {
 	return prometheus.NewDesc(prometheus.BuildFQName(namespace, "", name), help, labels, nil)
 }
@@ -62,18 +110,22 @@ var (
 	sessionBestDiff    = desc("session_best_difficulty", "Best share difficulty since the last restart (bestSessionDiff).")
 	duplicateNonces    = desc("duplicate_hw_nonces_total", "Duplicate nonces returned by the hardware (duplicateHWNonces).")
 
+	stratumInfo = desc("stratum_info", "Configured stratum pool, always 1 (stratumURL, stratumPort, stratumTLS, stratumProtocol and their fallback counterparts). The role tells apart the primary and the fallback pool, which stratum_using_fallback resolves to a pool label.",
+		"role", "url", "port", "tls", "protocol")
 	usingFallback = desc("stratum_using_fallback", "Whether the device is mining on the fallback pool (stratum.usingFallback).")
 	poolMode      = desc("stratum_pool_mode", "Active pool mode, 1 for the current mode (stratum.activePoolMode).", "mode")
 
-	poolLabelHelp     = " In failover mode the device reports only the selected pool, so pool 0 is whichever pool is active."
-	poolConnected     = desc("pool_connected", "Whether the stratum connection is established (stratum.pools.connected)."+poolLabelHelp, "pool")
+	poolLabelHelp = " In failover mode the device reports only the selected pool, so pool 0 is whichever pool is active."
+	roleLabelHelp = " The role tells which configured pool this is."
+	poolConnected = desc("pool_connected", "Whether the stratum connection is established (stratum.pools.connected)."+poolLabelHelp+roleLabelHelp+" The url, port, tls and protocol labels are the same pool identity stratum_info carries.",
+		"pool", "role", "url", "port", "tls", "protocol")
 	poolDifficulty    = desc("pool_difficulty", "Share difficulty set by the pool (stratum.pools.poolDifficulty)."+poolLabelHelp, "pool")
 	networkDifficulty = desc("network_difficulty", "Bitcoin network difficulty reported by the pool (stratum.pools.networkDifficulty)."+poolLabelHelp, "pool")
 	poolAccepted      = desc("pool_shares_accepted_total", "Shares accepted by the pool (stratum.pools.accepted)."+poolLabelHelp, "pool")
 	poolRejected      = desc("pool_shares_rejected_total", "Shares rejected by the pool (stratum.pools.rejected)."+poolLabelHelp, "pool")
 	poolBestDiff      = desc("pool_best_difficulty", "Best share difficulty submitted to the pool this session (stratum.pools.bestDiff)."+poolLabelHelp, "pool")
-	poolPingRTT       = desc("pool_ping_rtt_seconds", "Round trip time to the pool (stratum.pools.pingRtt)."+poolLabelHelp, "pool")
-	poolPingLoss      = desc("pool_ping_loss_ratio", "Fraction of ping packets lost to the pool (stratum.pools.pingLoss)."+poolLabelHelp, "pool")
+	poolPingRTT       = desc("pool_ping_rtt_seconds", "Round trip time to the pool (stratum.pools.pingRtt)."+poolLabelHelp+roleLabelHelp, "pool", "role")
+	poolPingLoss      = desc("pool_ping_loss_ratio", "Fraction of ping packets lost to the pool (stratum.pools.pingLoss)."+poolLabelHelp+roleLabelHelp, "pool", "role")
 
 	uptime   = desc("uptime_seconds", "Time since the last restart (uptimeSeconds).")
 	wifiRSSI = desc("wifi_rssi_dbm", "WiFi signal strength (wifiRSSI).")
@@ -130,6 +182,7 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- sessionBestDiff
 	ch <- duplicateNonces
 
+	ch <- stratumInfo
 	ch <- usingFallback
 	ch <- poolMode
 
@@ -194,6 +247,9 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	ch <- gauge(sessionBestDiff, i.BestSessionDiff)
 	ch <- counter(duplicateNonces, i.DuplicateHWNonces)
 
+	ch <- gauge(stratumInfo, 1, append([]string{rolePrimary}, stratumIdentity(i, rolePrimary)...)...)
+	ch <- gauge(stratumInfo, 1, append([]string{roleFallback}, stratumIdentity(i, roleFallback)...)...)
+
 	ch <- gauge(usingFallback, boolToFloat(i.Stratum.UsingFallback))
 	for mode, label := range poolModes {
 		ch <- gauge(poolMode, boolToFloat(mode == i.Stratum.PoolMode), label)
@@ -201,14 +257,16 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 
 	for n, pool := range i.Stratum.Pools {
 		id := strconv.Itoa(n)
-		ch <- gauge(poolConnected, boolToFloat(pool.Connected), id)
+		role := poolRole(i.Stratum, n)
+		ch <- gauge(poolConnected, boolToFloat(pool.Connected),
+			append([]string{id, role}, stratumIdentity(i, role)...)...)
 		ch <- gauge(poolDifficulty, pool.PoolDifficulty, id)
 		ch <- gauge(networkDifficulty, pool.NetworkDifficulty, id)
 		ch <- counter(poolAccepted, pool.Accepted, id)
 		ch <- counter(poolRejected, pool.Rejected, id)
 		ch <- gauge(poolBestDiff, pool.BestDiff, id)
-		ch <- gauge(poolPingRTT, pool.PingRTT/millisecondPerSecond, id)
-		ch <- gauge(poolPingLoss, pool.PingLoss, id)
+		ch <- gauge(poolPingRTT, pool.PingRTT/millisecondPerSecond, id, role)
+		ch <- gauge(poolPingLoss, pool.PingLoss, id, role)
 	}
 
 	ch <- gauge(uptime, i.UptimeSeconds)
