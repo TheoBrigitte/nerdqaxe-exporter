@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -55,6 +56,16 @@ func main() {
 				Usage: "`path` under which to expose metrics",
 				Value: "/metrics",
 			},
+			&cli.StringFlag{
+				Name:  "log.level",
+				Usage: "only log messages at or above this `level`: debug, info, warn, error",
+				Value: "info",
+			},
+			&cli.StringFlag{
+				Name:  "log.format",
+				Usage: "log output `format`: json, console",
+				Value: "json",
+			},
 		},
 		Action: run,
 	}
@@ -66,7 +77,14 @@ func main() {
 }
 
 func run(ctx context.Context, cmd *cli.Command) error {
-	logger := log.Logger
+	logger, err := newLogger(cmd.String("log.level"), cmd.String("log.format"))
+	if err != nil {
+		return err
+	}
+
+	// main logs the error this returns through the zerolog global, so point
+	// the global at the configured logger to keep the flags applying to it.
+	log.Logger = logger
 
 	// --version is not a scrape, print the version and stop here.
 	if cmd.Bool("version") {
@@ -161,6 +179,26 @@ func run(ctx context.Context, cmd *cli.Command) error {
 	<-shutdownDone
 
 	return nil
+}
+
+// newLogger builds the root logger from the --log.level and --log.format flags.
+func newLogger(level, format string) (zerolog.Logger, error) {
+	parsedLevel, err := zerolog.ParseLevel(level)
+	if err != nil {
+		return zerolog.Nop(), fmt.Errorf("invalid --log.level %q: %w", level, err)
+	}
+
+	var writer io.Writer
+	switch format {
+	case "json":
+		writer = os.Stderr
+	case "console":
+		writer = zerolog.ConsoleWriter{Out: os.Stderr}
+	default:
+		return zerolog.Nop(), fmt.Errorf("invalid --log.format %q: must be json or console", format)
+	}
+
+	return zerolog.New(writer).Level(parsedLevel).With().Timestamp().Logger(), nil
 }
 
 // promErrorLog adapts a zerolog logger to the promhttp.Logger interface.
