@@ -1,0 +1,60 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: nerdqaxe-exporter
+    flags:
+    - -v
+    ldflags:
+    - -s -w
+    - -X github.com/prometheus/common/version.Version={{.Version}}
+    - -X github.com/prometheus/common/version.Revision={{.FullCommit}}
+    - -X github.com/prometheus/common/version.Branch={{.Branch}}
+    - -X github.com/prometheus/common/version.BuildUser=goreleaser
+    - -X github.com/prometheus/common/version.BuildDate={{.Date}}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    binary: bin/nerdqaxe-exporter
+
+dockers_v2:
+  - dockerfile: docker/Dockerfile
+    ids:
+      - nerdqaxe-exporter
+    images:
+      - "docker.io/theo01/nerdqaxe-exporter"
+    tags:
+      - "{{ .Version }}"
+      - "latest"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    annotations: &image_metadata
+      org.opencontainers.image.title: "{{ .ProjectName }}"
+      org.opencontainers.image.description: "Prometheus exporter for NerdQAxe"
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.source: "{{ .GitURL }}"
+      org.opencontainers.image.created: "{{ .Date }}"
+    labels: *image_metadata
+
+archives:
+  - formats: ["binary"]
+
+changelog:
+  abbrev: 7
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+release:
+  draft: false
