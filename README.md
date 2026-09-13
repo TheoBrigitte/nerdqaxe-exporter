@@ -112,7 +112,7 @@ Scrape config:
 scrape_configs:
   - job_name: nerdqaxe
     static_configs:
-      - targets: ['localhost:10055']
+      - targets: ["localhost:10055"]
 ```
 
 ## Contributing
