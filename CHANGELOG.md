@@ -24,5 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Landing page on `/`.
 - Linux binaries for amd64 and arm64.
 - Image `docker.io/theo01/nerdqaxe-exporter`.
+- Grafana dashboard
 
 [Unreleased]: https://github.com/TheoBrigitte/nerdqaxe-exporter/tree/main
