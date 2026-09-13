@@ -7,7 +7,7 @@
   [![GitHub Release](https://img.shields.io/github/v/release/TheoBrigitte/nerdqaxe-exporter?color=brightgreen)](https://github.com/TheoBrigitte/nerdqaxe-exporter/releases/latest)
   [![Go Reference](https://pkg.go.dev/badge/github.com/TheoBrigitte/nerdqaxe-exporter.svg)](https://pkg.go.dev/github.com/TheoBrigitte/nerdqaxe-exporter)
   [![ci](https://github.com/TheoBrigitte/nerdqaxe-exporter/actions/workflows/ci.yaml/badge.svg)](https://github.com/TheoBrigitte/nerdqaxe-exporter/actions/workflows/ci.yaml)
-  ![GitHub Downloads](https://img.shields.io/github/downloads/TheoBrigitte/nerdqaxe-exporter/total)
+  [![Docker Pulls](https://img.shields.io/docker/pulls/theo01/nerdqaxe-exporter)](https://hub.docker.com/r/theo01/nerdqaxe-exporter)
   [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/TheoBrigitte/nerdqaxe-exporter/badge)](https://scorecard.dev/viewer/?uri=github.com/TheoBrigitte/nerdqaxe-exporter)
 
 </div>
