@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "is992zt",
-    "generation": 35,
+    "generation": 38,
     "creationTimestamp": "2026-09-13T14:33:52Z",
     "labels": {},
     "annotations": {}
@@ -407,7 +407,7 @@
                         "color": "#EAB839"
                       },
                       {
-                        "value": 120,
+                        "value": 150,
                         "color": "red"
                       }
                     ]
@@ -642,7 +642,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(nerdqaxe_pool_shares_rejected_total{hostname=\"$hostname\"}) / (sum(nerdqaxe_pool_shares_accepted_total{hostname=\"$hostname\"}))",
+                        "expr": "sum(nerdqaxe_pool_shares_rejected_total{hostname=\"$hostname\"}) / (sum(nerdqaxe_pool_shares_accepted_total{hostname=\"$hostname\"})) * 100",
                         "instant": true,
                         "legendFormat": "Rejected ratio"
                       },
@@ -725,7 +725,7 @@
                     "properties": [
                       {
                         "id": "unit",
-                        "value": "percentunit"
+                        "value": "percent"
                       },
                       {
                         "id": "decimals",
@@ -865,7 +865,7 @@
               },
               "fieldConfig": {
                 "defaults": {
-                  "unit": "s",
+                  "unit": "ms",
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
@@ -874,11 +874,11 @@
                         "color": "green"
                       },
                       {
-                        "value": 30,
+                        "value": 20,
                         "color": "yellow"
                       },
                       {
-                        "value": 80,
+                        "value": 70,
                         "color": "red"
                       }
                     ]
@@ -966,7 +966,15 @@
                     "steps": [
                       {
                         "value": 0,
+                        "color": "blue"
+                      },
+                      {
+                        "value": 50,
                         "color": "green"
+                      },
+                      {
+                        "value": 65,
+                        "color": "#EAB839"
                       },
                       {
                         "value": 75,
@@ -2798,7 +2806,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "nerdqaxe_pool_ping_rtt_seconds{hostname=\"$hostname\"}",
+                        "expr": "nerdqaxe_pool_ping_rtt_seconds{hostname=\"$hostname\"} * 1000",
                         "legendFormat": "Ping RTT",
                         "range": true
                       },
@@ -2865,7 +2873,7 @@
               },
               "fieldConfig": {
                 "defaults": {
-                  "unit": "s",
+                  "unit": "ms",
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
@@ -3366,8 +3374,8 @@
                 "barShape": "flat",
                 "barWidthFactor": 0.54,
                 "effects": {
-                  "barGlow": false,
-                  "centerGlow": false,
+                  "barGlow": true,
+                  "centerGlow": true,
                   "gradient": false
                 },
                 "endpointMarker": "point",
@@ -3385,7 +3393,7 @@
                 "segmentSpacing": 0.3,
                 "shape": "circle",
                 "showThresholdLabels": false,
-                "showThresholdMarkers": true,
+                "showThresholdMarkers": false,
                 "sizing": "auto",
                 "sparkline": true,
                 "textMode": "auto"
@@ -3400,15 +3408,12 @@
                       {
                         "value": 0,
                         "color": "blue"
-                      },
-                      {
-                        "value": 4,
-                        "color": "purple"
                       }
                     ]
                   },
                   "color": {
-                    "mode": "thresholds"
+                    "mode": "fixed",
+                    "fixedColor": "purple"
                   }
                 },
                 "overrides": []
@@ -3925,7 +3930,7 @@
     ],
     "timeSettings": {
       "timezone": "browser",
-      "from": "now-6h",
+      "from": "now-3h",
       "to": "now",
       "autoRefresh": "",
       "autoRefreshIntervals": [
