@@ -2,7 +2,6 @@ package collector
 
 import (
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/rs/zerolog"
 
 	"github.com/TheoBrigitte/nerdqaxe-exporter/internal/nerdqaxe"
 )
@@ -26,7 +26,7 @@ func newCollector(t *testing.T, handler http.HandlerFunc) *Collector {
 		t.Fatalf("new client: %v", err)
 	}
 
-	return New(client, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	return New(client, zerolog.New(io.Discard))
 }
 
 func TestCollect(t *testing.T) {

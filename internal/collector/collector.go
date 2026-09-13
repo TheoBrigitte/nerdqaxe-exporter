@@ -3,11 +3,11 @@ package collector
 
 import (
 	"context"
-	"log/slog"
 	"strconv"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rs/zerolog"
 
 	"github.com/TheoBrigitte/nerdqaxe-exporter/internal/nerdqaxe"
 )
@@ -82,12 +82,12 @@ var (
 // Collector scrapes a NerdQAxe device on every Prometheus collection.
 type Collector struct {
 	client *nerdqaxe.Client
-	logger *slog.Logger
+	logger zerolog.Logger
 	ctx    context.Context
 }
 
 // New returns a Collector scraping the device behind client.
-func New(client *nerdqaxe.Client, logger *slog.Logger) *Collector {
+func New(client *nerdqaxe.Client, logger zerolog.Logger) *Collector {
 	return &Collector{client: client, logger: logger, ctx: context.Background()}
 }
 
@@ -153,7 +153,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	ch <- gauge(scrapeDuration, time.Since(start).Seconds())
 
 	if err != nil {
-		c.logger.Error("scrape failed", "target", c.client.Target(), "err", err)
+		c.logger.Error().Err(err).Str("target", c.client.Target()).Msg("scrape failed")
 		ch <- gauge(up, 0)
 		return
 	}

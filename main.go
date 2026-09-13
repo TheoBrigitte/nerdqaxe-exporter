@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,6 +16,8 @@ import (
 	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v3"
 
 	"github.com/TheoBrigitte/nerdqaxe-exporter/internal/collector"
@@ -59,13 +60,13 @@ func main() {
 	}
 
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
-		slog.Error("exporter failed", "err", err)
+		log.Error().Err(err).Msg("exporter failed")
 		os.Exit(1)
 	}
 }
 
 func run(ctx context.Context, cmd *cli.Command) error {
-	logger := slog.Default()
+	logger := log.Logger
 
 	// --version is not a scrape, print the version and stop here.
 	if cmd.Bool("version") {
@@ -100,7 +101,7 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("invalid metrics path %q: must start with /", path)
 	}
 
-	handlerOpts := promhttp.HandlerOpts{ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError)}
+	handlerOpts := promhttp.HandlerOpts{ErrorLog: promErrorLog{logger}}
 	mux := http.NewServeMux()
 	mux.Handle(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Bind the device collector to the request, so that the device query
@@ -145,12 +146,12 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		defer cancel()
 
 		if err := server.Shutdown(shutdownCtx); err != nil {
-			logger.Error("HTTP server shutdown failed", "err", err)
+			logger.Error().Err(err).Msg("HTTP server shutdown failed")
 		}
 	}()
 
 	// Start HTTP server and wait for shutdown or error
-	logger.Info("listening", "address", address, "path", path, "target", client.Target())
+	logger.Info().Str("address", address).Str("path", path).Str("target", client.Target()).Msg("listening")
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("HTTP server failed: %w", err)
 	}
@@ -160,4 +161,13 @@ func run(ctx context.Context, cmd *cli.Command) error {
 	<-shutdownDone
 
 	return nil
+}
+
+// promErrorLog adapts a zerolog logger to the promhttp.Logger interface.
+type promErrorLog struct {
+	logger zerolog.Logger
+}
+
+func (l promErrorLog) Println(v ...any) {
+	l.logger.Error().Msg(fmt.Sprint(v...))
 }

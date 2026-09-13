@@ -4,10 +4,15 @@ go 1.26.5
 
 require (
 	github.com/prometheus/common v0.70.1
+	github.com/rs/zerolog v1.35.1
 	github.com/urfave/cli/v3 v3.10.1
 )
 
-require github.com/kylelemons/godebug v1.1.0 // indirect
+require (
+	github.com/kylelemons/godebug v1.1.0 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
+)
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
