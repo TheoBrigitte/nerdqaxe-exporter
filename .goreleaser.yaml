@@ -49,6 +49,9 @@ dockers_v2:
       org.opencontainers.image.created: "{{ .Date }}"
     labels: *image_metadata
 
+docker_digest:
+  name_template: "{{ .ProjectName }}_digests.txt"
+
 archives:
   - formats: ["binary"]
 
@@ -62,3 +65,9 @@ changelog:
 
 release:
   draft: true
+  extra_files:
+    - glob: ./dist/*_digests.txt
+  footer: |
+    ## Docker images
+    - `docker.io/theo01/nerdqaxe-exporter:{{ .Tag }}`
+    - `docker.io/theo01/nerdqaxe-exporter:latest`
