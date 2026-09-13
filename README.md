@@ -1,17 +1,81 @@
 # NerdQAxe exporter
 
-Prometheus exporter for NerdQAxe firmware.
+Prometheus exporter for the NerdQAxe firmware.
 
-It scrapes `/api/system/info` on the miner at each Prometheus scrape and exposes
+It queries `/api/system/info` on the miner at each Prometheus scrape and exposes
 the result as metrics in base units (hashes/second, volts, amperes, watts,
-seconds, degrees Celsius), following the Prometheus
-[guidelines for writing exporters](https://prometheus.io/docs/instrumenting/writing_exporters/).
+seconds, degrees Celsius).
+
+## Metrics
+
+Each description names the `/api/system/info` field the metric is built from.
+
+| Metric | Description |
+| --- | --- |
+| `nerdqaxe_up` | Whether the last scrape of the device succeeded |
+| `nerdqaxe_scrape_duration_seconds` | Duration of the last query to the device |
+| `nerdqaxe_info` | Device identity, always 1. Labels: `device_model`, `asic_model`, `asic_count`, `hostname`, `ip`, `mac`, `version`, `ssid` |
+| `nerdqaxe_hashrate_hashes_per_second` | Current hashrate |
+| `nerdqaxe_power_watts` | Power drawn by the device |
+| `nerdqaxe_input_voltage_volts` | Input voltage |
+| `nerdqaxe_input_current_amperes` | Input current |
+| `nerdqaxe_core_voltage_volts` | Measured ASIC core voltage |
+| `nerdqaxe_core_voltage_configured_volts` | Configured ASIC core voltage |
+| `nerdqaxe_asic_frequency_hertz` | Configured ASIC clock frequency |
+| `nerdqaxe_shutdown` | Whether the device has shut down mining |
+| `nerdqaxe_temperature_celsius` | Temperature per `sensor`: `asic_max`, `voltage_regulator`, `voltage_regulator_internal` |
+| `nerdqaxe_asic_temperature_celsius` | Temperature per `asic`, reported as 0 on boards without per-ASIC sensors |
+| `nerdqaxe_overheat_temperature_celsius` | Temperature at which the device shuts down |
+| `nerdqaxe_fan_speed_rpm` | Fan speed, per `fan` |
+| `nerdqaxe_fan_speed_ratio` | Fan speed as a fraction of maximum, per `fan` |
+| `nerdqaxe_blocks_found_total` | Blocks found over the lifetime of the device |
+| `nerdqaxe_session_blocks_found_total` | Blocks found since the last restart |
+| `nerdqaxe_best_difficulty` | Best share difficulty over the lifetime of the device |
+| `nerdqaxe_duplicate_hw_nonces_total` | Duplicate nonces returned by the hardware |
+| `nerdqaxe_stratum_using_fallback` | Whether the device is mining on the fallback pool |
+| `nerdqaxe_stratum_pool_mode` | Active pool mode, 1 for the current `mode`: `failover` or `dual` |
+| `nerdqaxe_pool_connected` | Whether the stratum connection is established, per `pool` |
+| `nerdqaxe_pool_difficulty` | Share difficulty set by the pool, per `pool` |
+| `nerdqaxe_network_difficulty` | Bitcoin network difficulty reported by the pool, per `pool` |
+| `nerdqaxe_pool_shares_accepted_total` | Shares accepted by the pool, per `pool` |
+| `nerdqaxe_pool_shares_rejected_total` | Shares rejected by the pool, per `pool` |
+| `nerdqaxe_pool_best_difficulty` | Best share difficulty submitted to the pool this session, per `pool` |
+| `nerdqaxe_pool_ping_rtt_seconds` | Round trip time to the pool, per `pool` |
+| `nerdqaxe_pool_ping_loss_ratio` | Fraction of ping packets lost to the pool, per `pool` |
+| `nerdqaxe_uptime_seconds` | Time since the last restart |
+| `nerdqaxe_wifi_rssi_dbm` | WiFi signal strength |
+| `nerdqaxe_free_heap_bytes` | Free heap per `memory` area: `spiram`, `internal` |
+
+A failed device query is reported as `nerdqaxe_up 0` rather than an HTTP error,
+so the exporter's own process metrics stay available.
+
+Shares and best session difficulty are per pool. Sum them for a device total:
+`sum(rate(nerdqaxe_pool_shares_accepted_total[5m]))`. The device also reports
+1m, 10m, 1h and 1d hashrate averages; those are deliberately not exported, since
+Prometheus averages more accurately with `avg_over_time()`.
+
+The pool label is the pool's index in the device's pool list. In failover mode the device reports only the pool it is currently using, so pool="0" is the primary pool or the fallback
+depending on nerdqaxe_stratum_using_fallback.
+
+All of the above are defined in
+[`internal/collector/collector.go`](internal/collector/collector.go).
+The fields are built from the NerdQAxe firmware v1.0.37.2-LTS API, which is implemented in
+[`main/http_server/handler_system.cpp`](https://github.com/shufps/ESP-Miner-NerdQAxePlus/blob/V1.0.37.2-LTS/main/http_server/handler_system.cpp).
+Support for the newer v2 API will be added later.
+
+## Install
+
+Download a binary from the [releases page](https://github.com/TheoBrigitte/nerdqaxe-exporter/releases), or use the
+Docker image:
+
+```
+docker run --rm -p 10055:10055 docker.io/theo01/nerdqaxe-exporter --target http://192.0.2.10
+```
 
 ## Usage
 
 ```
-make build
-./build/nerdqaxe-exporter --target http://192.0.2.10
+nerdqaxe-exporter --target http://192.0.2.10
 ```
 
 | Flag | Default | Description |
@@ -19,7 +83,10 @@ make build
 | `--target`, `-t` | *required* | Base URL of the device, also read from `NERDQAXE_TARGET` |
 | `--timeout` | `5s` | Timeout for a device query |
 | `--web.listen-address` | `:10055` | Address to listen on for telemetry |
-| `--web.telemetry-path` | `/metrics` | Path under which to expose metrics |
+| `--web.metrics-path` | `/metrics` | Path under which to expose metrics |
+| `--log.level` | `info` | Only log at or above this level: `debug`, `info`, `warn`, `error` |
+| `--log.format` | `json` | Log output format: `json`, `console` |
+| `--version`, `-V` | | Print the version and exit |
 
 Scrape config:
 
@@ -30,43 +97,10 @@ scrape_configs:
       - targets: ['localhost:10055']
 ```
 
-One exporter instance serves one miner, as the guidelines prescribe: run one
-process per device and let Prometheus do service discovery. Port 10055 is the
-next free port in the Prometheus [default port
-allocations](https://github.com/prometheus/prometheus/wiki/Default-port-allocations);
-claim it there before announcing this exporter publicly.
+## Contributing
 
-A failed device query is reported as `nerdqaxe_up 0` rather than an HTTP error,
-so the exporter's own process metrics stay available.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Metrics
+## License
 
-All metrics are prefixed with `nerdqaxe_`.
-
-| Metric | Description |
-| --- | --- |
-| `up` | Whether the last scrape of the device succeeded |
-| `scrape_duration_seconds` | How long the device query took |
-| `info` | Device identity: model, ASIC model and count, hostname, IP, MAC, firmware version, SSID |
-| `hashrate_hashes_per_second` | Current hashrate |
-| `power_watts`, `input_voltage_volts`, `input_current_amperes` | Power input |
-| `core_voltage_volts`, `core_voltage_configured_volts` | ASIC core voltage, measured and configured |
-| `asic_frequency_hertz` | Configured ASIC clock frequency |
-| `shutdown` | Whether the device has shut down mining |
-| `temperature_celsius` | Temperature by `sensor` (`asic_max`, `voltage_regulator`, `voltage_regulator_internal`) |
-| `asic_temperature_celsius` | Temperature per `asic` index, on boards that report it |
-| `overheat_temperature_celsius` | Shutdown temperature threshold |
-| `fan_speed_rpm`, `fan_speed_ratio` | Fan speed, by `fan` label |
-| `blocks_found_total`, `session_blocks_found_total` | Blocks found, lifetime and since restart |
-| `best_difficulty` | Best share difficulty over the lifetime of the device |
-| `duplicate_hw_nonces_total` | Duplicate nonces returned by the hardware |
-| `stratum_using_fallback`, `stratum_pool_mode` | Pool selection state, `mode` is `failover` or `dual` |
-| `pool_connected`, `pool_difficulty`, `network_difficulty` | Per `pool` index |
-| `pool_shares_accepted_total`, `pool_shares_rejected_total`, `pool_best_difficulty` | Per `pool` index |
-| `pool_ping_rtt_seconds`, `pool_ping_loss_ratio` | Per `pool` index |
-| `uptime_seconds`, `wifi_rssi_dbm`, `free_heap_bytes` | Device health |
-
-Shares and best session difficulty are per pool. Sum them for a device total:
-`sum(rate(nerdqaxe_pool_shares_accepted_total[5m]))`. The device also reports
-1m, 10m, 1h and 1d hashrate averages; those are deliberately not exported, since
-Prometheus averages more accurately with `avg_over_time()`.
+[MIT](LICENSE)
