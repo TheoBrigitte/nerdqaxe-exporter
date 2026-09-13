@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="assets/nerdqaxe-exporter-square.png" alt="NerdQAxe exporter logo" height="150px">
+    <img src="assets/nerdqaxe-exporter-square.png" alt="NerdQAxe exporter logo" height="225px">
 </p>
 
 <div align="center">
@@ -11,6 +11,8 @@
   [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/TheoBrigitte/nerdqaxe-exporter/badge)](https://scorecard.dev/viewer/?uri=github.com/TheoBrigitte/nerdqaxe-exporter)
 
 </div>
+
+## About
 
 Prometheus exporter for the NerdQAxe firmware.
 
