@@ -22,6 +22,9 @@ builds:
     goarch:
       - amd64
       - arm64
+      - arm
+    goarm:
+      - "7"
     binary: bin/nerdqaxe-exporter
 
 dockers_v2:
@@ -36,6 +39,7 @@ dockers_v2:
     platforms:
       - linux/amd64
       - linux/arm64
+      - linux/arm/v7
     annotations: &image_metadata
       org.opencontainers.image.title: "{{ .ProjectName }}"
       org.opencontainers.image.description: "Prometheus exporter for NerdQAxe"

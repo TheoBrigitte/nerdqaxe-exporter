@@ -4,11 +4,12 @@ NAME = nerdqaxe-exporter
 
 # Build informations
 BIN = ${BIN_DIR}/${NAME}
-BIN_DIR = ${BUILD_DIR}/${GOOS}/${GOARCH}/bin
+BIN_DIR = ${BUILD_DIR}/${PLATFORM}/bin
 BUILD_DIR := build
 TARGET ?= http://nerdqaxe.local
 GO_MAIN := .
 GOARCH ?= $(shell go env GOARCH)
+GOARM ?= 7
 VERSION = $(shell git describe --always --tags)
 LDFLAGS := -s -w \
 	-X github.com/prometheus/common/version.Version=$(VERSION) \
@@ -17,11 +18,15 @@ LDFLAGS := -s -w \
 	-X github.com/prometheus/common/version.BuildUser=$(shell whoami)@$(shell hostname) \
 	-X github.com/prometheus/common/version.BuildDate=$(shell date --utc +%FT%T)
 GOOS ?= $(shell go env GOOS)
+# Platform in the <os>/<arch>[/<variant>] form used by both the build layout
+# and docker --platform. 32-bit ARM is the only arch here carrying a variant.
+PLATFORM = ${GOOS}/${GOARCH}$(if $(filter arm,${GOARCH}),/v${GOARM},)
+PLATFORMS := linux/amd64,linux/arm64,linux/arm/v7
 DOCKER_FILE := docker/Dockerfile
 DOCKER_IMAGE := docker.io/theo01/${NAME}:$(VERSION)
 
 # Makefile targets
-.PHONY: build build-amd64 build-arm64 docker docker-amd64 docker-arm64 docker-all clean run install test test-concurrency lint golangci-lint go-lint vet fmt security nancy help
+.PHONY: build build-amd64 build-arm64 build-armv7 docker docker-amd64 docker-arm64 docker-armv7 docker-all clean run install test test-concurrency lint golangci-lint go-lint vet fmt security nancy help
 .DEFAULT_GOAL := build
 
 # Colors for output
@@ -40,7 +45,7 @@ setup: ## Setup the development environment
 
 build: ## Build the binary
 	mkdir -p ${BIN_DIR}
-	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} \
+	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} GOARM=${GOARM} \
   go build -v -o ${BIN} -ldflags=" \
   ${LDFLAGS}" \
   ${GO_MAIN}
@@ -51,10 +56,13 @@ build-amd64: ## Build the binary for AMD64 Linux
 build-arm64: ## Build the binary for ARM64 Linux
 	$(MAKE) build GOARCH=arm64
 
+build-armv7: ## Build the binary for ARMv7 Linux (Raspberry Pi 32-bit)
+	$(MAKE) build GOARCH=arm GOARM=7
+
 # The Dockerfile takes the binary from the build directory, laid out as
-# <os>/<arch>/bin/<binary>, the same layout GoReleaser passes as context.
+# <os>/<arch>[/<variant>]/bin/<binary>, the same layout GoReleaser passes as context.
 docker: build ## Build the Docker image
-	docker build --platform ${GOOS}/${GOARCH} -f $(DOCKER_FILE) -t $(DOCKER_IMAGE) ${BUILD_DIR}
+	docker build --platform ${PLATFORM} -f $(DOCKER_FILE) -t $(DOCKER_IMAGE) ${BUILD_DIR}
 
 docker-arm64: ## Build the Docker image for ARM64
 	$(MAKE) docker GOARCH=arm64
@@ -62,11 +70,14 @@ docker-arm64: ## Build the Docker image for ARM64
 docker-amd64: ## Build the Docker image for AMD64
 	$(MAKE) docker GOARCH=amd64
 
-docker-all: build-amd64 build-arm64 ## Build the Docker image for all architectures
-	docker buildx build --platform linux/amd64,linux/arm64 -f $(DOCKER_FILE) -t $(DOCKER_IMAGE) ${BUILD_DIR}
+docker-armv7: ## Build the Docker image for ARMv7 (Raspberry Pi 32-bit)
+	$(MAKE) docker GOARCH=arm GOARM=7
 
-docker-push: ## Push the Docker image to Docker Hub
-	docker buildx build --platform linux/amd64,linux/arm64 -f $(DOCKER_FILE) -t $(DOCKER_IMAGE) --push ${BUILD_DIR}
+docker-all: build-amd64 build-arm64 build-armv7 ## Build the Docker image for all architectures
+	docker buildx build --platform ${PLATFORMS} -f $(DOCKER_FILE) -t $(DOCKER_IMAGE) ${BUILD_DIR}
+
+docker-push: build-amd64 build-arm64 build-armv7 ## Push the Docker image to Docker Hub
+	docker buildx build --platform ${PLATFORMS} -f $(DOCKER_FILE) -t $(DOCKER_IMAGE) --push ${BUILD_DIR}
 
 docker-podman: docker
 	skopeo copy docker-daemon:${DOCKER_IMAGE} containers-storage:${DOCKER_IMAGE}
