@@ -125,19 +125,23 @@ func (c *Client) Target() string {
 
 // SystemInfo fetches the current device state.
 func (c *Client) SystemInfo(ctx context.Context) (*SystemInfo, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.target+systemInfoPath, nil)
+	u, err := url.JoinPath(c.target, systemInfoPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("join path: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, fmt.Errorf("new request: %w", err)
 	}
 
 	res, err := c.http.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("request %s: %w", req.URL, err)
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status %s", res.Status)
+		return nil, fmt.Errorf("%s returned unexpected status %s", req.URL, res.Status)
 	}
 
 	var info SystemInfo

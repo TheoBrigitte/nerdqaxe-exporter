@@ -103,6 +103,22 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	// Fail fast on a target that cannot be scraped, rather than starting up
+	// and only reporting the problem through nerdqaxe_up on every scrape.
+	checkCtx, cancel := context.WithTimeout(ctx, cmd.Duration("timeout"))
+	defer cancel()
+
+	info, err := client.SystemInfo(checkCtx)
+	if err != nil {
+		return fmt.Errorf("failed to query device: %w", err)
+	}
+	logger.Info().
+		Str("device_model", info.DeviceModel).
+		Str("asic_model", info.ASICModel).
+		Str("hostname", info.Hostname).
+		Str("version", info.Version).
+		Msg("device reachable")
+
 	// Initialize Prometheus registry and register collectors. The device
 	// collector is registered per scrape instead, see below.
 	registry := prometheus.NewPedanticRegistry()
