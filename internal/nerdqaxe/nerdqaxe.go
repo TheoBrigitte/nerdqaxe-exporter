@@ -46,11 +46,12 @@ type SystemInfo struct {
 
 	Fans []Fan `json:"fans"`
 
-	// Mining. Shares and session best difficulty are also reported at the top
-	// level, but those are totals over Stratum.Pools, so they are left out.
+	// Mining. Shares are also reported at the top level, but those are totals
+	// over Stratum.Pools, so they are left out.
 	FoundBlocks       float64 `json:"foundBlocks"`
 	TotalFoundBlocks  float64 `json:"totalFoundBlocks"`
 	BestDiff          float64 `json:"bestDiff"`
+	BestSessionDiff   float64 `json:"bestSessionDiff"`
 	DuplicateHWNonces float64 `json:"duplicateHWNonces"`
 	Stratum           Stratum `json:"stratum"`
 
