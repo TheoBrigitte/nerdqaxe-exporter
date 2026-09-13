@@ -6,18 +6,19 @@ NAME = nerdqaxe-exporter
 BIN = ${BIN_DIR}/${NAME}
 BIN_DIR = ${BUILD_DIR}/${GOOS}/${GOARCH}/bin
 BUILD_DIR := build
-DOCKER_FILE := docker/Dockerfile
-DOCKER_IMAGE := docker.io/theo01/${NAME}:latest
 TARGET ?= http://nerdqaxe.local
 GO_MAIN := .
 GOARCH ?= $(shell go env GOARCH)
+VERSION = $(shell git describe --always --tags)
 LDFLAGS := -s -w \
-	-X github.com/prometheus/common/version.Version=$(shell git describe --always --tags) \
+	-X github.com/prometheus/common/version.Version=$(VERSION) \
 	-X github.com/prometheus/common/version.Revision=$(shell git rev-parse HEAD) \
 	-X github.com/prometheus/common/version.Branch=$(shell git rev-parse --abbrev-ref HEAD) \
 	-X github.com/prometheus/common/version.BuildUser=$(shell whoami)@$(shell hostname) \
 	-X github.com/prometheus/common/version.BuildDate=$(shell date --utc +%FT%T)
 GOOS ?= $(shell go env GOOS)
+DOCKER_FILE := docker/Dockerfile
+DOCKER_IMAGE := docker.io/theo01/${NAME}:$(VERSION)
 
 # Makefile targets
 .PHONY: build build-amd64 build-arm64 docker docker-amd64 docker-arm64 docker-all clean run install test test-concurrency lint golangci-lint go-lint vet fmt security nancy help
@@ -63,6 +64,9 @@ docker-amd64: ## Build the Docker image for AMD64
 
 docker-all: build-amd64 build-arm64 ## Build the Docker image for all architectures
 	docker buildx build --platform linux/amd64,linux/arm64 -f $(DOCKER_FILE) -t $(DOCKER_IMAGE) ${BUILD_DIR}
+
+docker-push: ## Push the Docker image to Docker Hub
+	docker buildx build --platform linux/amd64,linux/arm64 -f $(DOCKER_FILE) -t $(DOCKER_IMAGE) --push ${BUILD_DIR}
 
 docker-podman: docker
 	skopeo copy docker-daemon:${DOCKER_IMAGE} containers-storage:${DOCKER_IMAGE}
