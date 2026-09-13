@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -61,6 +62,7 @@ func main() {
 		Action: run,
 	}
 
+	// Setup interrupt signal handling for gracefully shutdown
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -73,11 +75,13 @@ func main() {
 func run(ctx context.Context, cmd *cli.Command) error {
 	logger := slog.Default()
 
+	// Initialize NerdQaxe client
 	client, err := nerdqaxe.New(cmd.String("target"), cmd.Duration("timeout"))
 	if err != nil {
 		return err
 	}
 
+	// Initialize Prometheus registry and register collectors
 	registry := prometheus.NewPedanticRegistry()
 	registry.MustRegister(
 		collectors.NewGoCollector(),
@@ -86,6 +90,7 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		collector.New(client, logger),
 	)
 
+	// Initialize HTTP server handlers
 	path := cmd.String("web.telemetry-path")
 	mux := http.NewServeMux()
 	mux.Handle(path, promhttp.HandlerFor(registry, promhttp.HandlerOpts{ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError)}))
@@ -95,6 +100,7 @@ func run(ctx context.Context, cmd *cli.Command) error {
 			"<p><a href=%q>Metrics</a></p>\n</body></html>\n", client.Target(), path)
 	})
 
+	// Initialize HTTP server
 	address := cmd.String("web.listen-address")
 	server := &http.Server{
 		Addr:              address,
@@ -115,17 +121,18 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		defer cancel()
 
 		if err := server.Shutdown(shutdownCtx); err != nil {
-			logger.Error("shutdown failed", "err", err)
+			logger.Error("HTTP server shutdown failed", "err", err)
 		}
 	}()
 
+	// Start HTTP server and wait for shutdown or error
 	logger.Info("listening", "address", address, "path", path, "target", client.Target())
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return err
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("HTTP server failed: %w", err)
 	}
 
-	// ListenAndServe returns as soon as Shutdown starts, so wait for the
-	// drain to complete before letting the process exit.
+	// ListenAndServe returns as soon as Shutdown starts, so wait Shutdown
+	// complete before letting the process exit.
 	<-shutdownDone
 
 	return nil
