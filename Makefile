@@ -8,7 +8,7 @@ BUILD_DIR := build
 DOCKER_FILE := docker/Dockerfile
 DOCKER_IMAGE := docker.io/theo01/${NAME}:latest
 TARGET ?= http://nerdqaxe.local
-GO_MAIN := ./main.go
+GO_MAIN := .
 GOARCH ?= $(shell go env GOARCH)
 LDFLAGS := -s -w \
 	-X github.com/prometheus/common/version.Version=$(shell git describe --always --tags) \
@@ -38,7 +38,7 @@ setup: ## Setup the development environment
 
 build: ## Build the binary
 	mkdir -p ${BUILD_DIR}
-	CGO_ENABLED=1 GOOS=${GOOS} GOARCH=${GOARCH} \
+	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} \
   go build -v -o ${BIN} -ldflags=" \
   ${LDFLAGS}" \
   ${GO_MAIN}
