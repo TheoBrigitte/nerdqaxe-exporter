@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "is992zt",
-    "generation": 38,
+    "generation": 39,
     "creationTimestamp": "2026-09-13T14:33:52Z",
     "labels": {},
     "annotations": {}
@@ -526,7 +526,7 @@
                   },
                   "color": {
                     "mode": "fixed",
-                    "fixedColor": "blue"
+                    "fixedColor": "purple"
                   }
                 },
                 "overrides": [
@@ -539,7 +539,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
+                          "fixedColor": "purple",
                           "mode": "fixed"
                         }
                       }
@@ -555,7 +555,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "orange",
+                          "fixedColor": "blue",
                           "mode": "fixed"
                         }
                       }
@@ -1543,7 +1543,7 @@
                   },
                   "color": {
                     "mode": "fixed",
-                    "fixedColor": "green"
+                    "fixedColor": "purple"
                   }
                 },
                 "overrides": [
@@ -1556,7 +1556,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "orange",
+                          "fixedColor": "blue",
                           "mode": "fixed"
                         }
                       }
@@ -1571,7 +1571,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
+                          "fixedColor": "purple",
                           "mode": "fixed"
                         }
                       }
