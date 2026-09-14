@@ -107,14 +107,68 @@ Support for the newer v2 API will be added later.
 
 ## Install
 
-Download a binary from the [releases page](https://github.com/TheoBrigitte/nerdqaxe-exporter/releases), or use the
-Docker image:
+### Binary
+
+Download a binary from the [releases page](https://github.com/TheoBrigitte/nerdqaxe-exporter/releases/latest)
 
 ```
-$ docker run --rm -p 10055:10055 docker.io/theo01/nerdqaxe-exporter --target http://nerdqaxe.local
-{"level":"info","target":"http://nerdqaxe.local","device_model":"NerdQAxe++","asic_model":"BM1370","hostname":"nerdqaxe","version":"V1.0.37.2-LTS","time":"2026-09-13T12:09:14Z","message":"device reachable"}
-{"level":"info","address":":10055","path":"/metrics","targets":["http://nerdqaxe.local"],"time":"2026-09-13T12:09:14Z","message":"listening"}
+curl -Lo nerdqaxe-exporter https://github.com/TheoBrigitte/nerdqaxe-exporter/releases/latest/download/nerdqaxe-exporter_linux_amd64
+install -D -m 755 nerdqaxe-exporter ~/.local/bin/nerdqaxe-exporter
 ```
+
+Start the exporter with your NerdQAxe URL:
+
+```
+nerdqaxe-exporter --log.format console --target http://192.168.1.42
+```
+
+Output:
+
+```
+$ nerdqaxe-exporter --log.format console --target http://192.168.1.42
+4:26PM INF starting nerdqaxe-exporter revision=127b0e8eec43fa44475063cf28ad2071565624ff version=0.1.0
+4:26PM INF device reachable asic_model=BM1370 device_model=NerdQAxe++ hostname=nerdqaxe target=http://192.168.1.42 version=V1.0.37.2-LTS
+4:26PM INF listening address=:10055 path=/metrics targets=["http://192.168.1.42"]
+```
+
+### Docker
+
+```
+docker run --rm -p 10055:10055 docker.io/theo01/nerdqaxe-exporter --target http://192.168.1.42
+```
+
+Output:
+
+```
+{"level":"info","target":"http://192.168.1.42","device_model":"NerdQAxe++","asic_model":"BM1370","hostname":"nerdqaxe","version":"V1.0.37.2-LTS","time":"2026-09-13T12:09:14Z","message":"device reachable"}
+{"level":"info","address":":10055","path":"/metrics","targets":["http://192.168.1.42"],"time":"2026-09-13T12:09:14Z","message":"listening"}
+```
+
+### Docker compose (testing)
+
+Create an `.env` file with your NerdQAxe URL:
+
+```
+echo 'NERDQAXE_TARGET=http://192.168.1.42' > .env
+```
+
+Start the exporter, Prometheus and Grafana:
+
+```
+docker-compose up -d --wait
+```
+
+Wait for Healthy output:
+
+```
+[+] up 4/4
+ ✔ Network nerdqaxe-exporter_default Created                                                                                                                                               0.1s
+ ✔ Container nerdqaxe-exporter       Healthy                                                                                                                                               1.6s
+ ✔ Container prometheus              Healthy                                                                                                                                               1.5s
+ ✔ Container grafana                 Healthy
+```
+
+Open Grafana at http://localhost:3000
 
 ## Usage
 

@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Add docker-compose file for local development and testing
 
+### Changed
+
+- Update readme install section
+
 ### Fixed
 
 - Fix dashboard dataquery sources
