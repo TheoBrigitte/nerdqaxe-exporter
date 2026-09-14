@@ -1,0 +1,47 @@
+# This docker-compose file sets up a monitoring stack for NerdQaxe using Prometheus and Grafana.
+# It is not suitable for a production environment and is intended for local testing and development purposes only.
+services:
+
+  nerdqaxe-exporter:
+    image: docker.io/theo01/nerdqaxe-exporter:0.1.0
+    container_name: nerdqaxe-exporter
+    env_file: .env
+    ports:
+      - 10055:10055
+    restart: unless-stopped
+
+  prometheus:
+    image: docker.io/prom/prometheus:v3.14.0
+    container_name: prometheus
+    command: --config.file=/etc/prometheus/prometheus.yaml
+    depends_on:
+      - nerdqaxe-exporter
+    ports:
+      - 9090:9090
+    restart: unless-stopped
+    volumes:
+      - ./docker-compose/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+
+  grafana:
+    image: docker.io/grafana/grafana:13.2.1
+    container_name: grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 10s
+    environment:
+      # Disable user login and enable anonymous access with Admin role
+      GF_AUTH_ANONYMOUS_ENABLED: true
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: true
+      GF_USERS_ALLOW_SIGN_UP: false
+      # Set home dashboard to nerdqaxe-exporter
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/nerdqaxe-exporter.json
+    volumes:
+      - ./dashboard/nerdqaxe-exporter.json:/var/lib/grafana/dashboards/nerdqaxe-exporter.json:ro
+      - ./docker-compose/grafana-provisioning:/etc/grafana/provisioning
