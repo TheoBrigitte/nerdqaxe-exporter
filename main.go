@@ -39,7 +39,7 @@ func main() {
 			&cli.StringSliceFlag{
 				Name:    "target",
 				Aliases: []string{"t"},
-				Usage:   "base `URL` of a NerdQAxe device, e.g. http://nerdqaxe.local; repeat for several devices",
+				Usage:   "base `URL` of a NerdQAxe device, e.g. http://192.168.1.42; repeat for several devices",
 				Sources: cli.EnvVars("NERDQAXE_TARGET"),
 			},
 			&cli.DurationFlag{
