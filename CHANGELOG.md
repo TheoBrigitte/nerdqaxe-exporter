@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-14
+
 ### Added
 
 - Add docker-compose file for local development and testing
@@ -20,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Fix dashboard dataquery sources
 
-## 0.1.0 - 2026-09-13
+## [0.1.0] - 2026-09-13
 
 ### Added
 
@@ -43,5 +45,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Image `docker.io/theo01/nerdqaxe-exporter`.
 - Grafana dashboard
 
-[Unreleased]: https://github.com/TheoBrigitte/nerdqaxe-exporter/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/TheoBrigitte/nerdqaxe-exporter/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/TheoBrigitte/nerdqaxe-exporter/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/TheoBrigitte/nerdqaxe-exporter/releases/tag/v0.1.0
