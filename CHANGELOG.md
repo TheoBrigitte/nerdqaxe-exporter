@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix dashboard dataquery sources
+
 ## 0.1.0 - 2026-09-13
 
 ### Added

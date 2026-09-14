@@ -2,9 +2,9 @@
   "apiVersion": "dashboard.grafana.app/v2",
   "kind": "Dashboard",
   "metadata": {
-    "name": "is992zt",
-    "generation": 39,
-    "creationTimestamp": "2026-09-13T14:33:52Z",
+    "name": "nerdqaxe-exporter",
+    "generation": 2,
+    "creationTimestamp": "2026-09-14T10:22:26Z",
     "labels": {},
     "annotations": {}
   },
@@ -17,14 +17,14 @@
             "kind": "DataQuery",
             "group": "grafana",
             "version": "v0",
+            "datasource": {
+              "name": "-- Grafana --"
+            },
             "spec": {
               "limit": 100,
               "matchAny": false,
               "tags": [],
               "type": "dashboard"
-            },
-            "labels": {
-              "grafana.app/export-label": "grafana-1"
             }
           },
           "enable": true,
@@ -65,10 +65,6 @@
                         "expr": "nerdqaxe_hashrate_hashes_per_second{hostname=\"$hostname\"} / 1e12",
                         "legendFormat": "Hashrate",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "A",
@@ -90,10 +86,6 @@
                         "expr": "avg_over_time(nerdqaxe_hashrate_hashes_per_second{hostname=\"$hostname\"}[10m]) / 1e12",
                         "legendFormat": "Hashrate 10m",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "B",
@@ -115,10 +107,6 @@
                         "expr": "avg_over_time(nerdqaxe_hashrate_hashes_per_second{hostname=\"$hostname\"}[1h]) / 1e12",
                         "legendFormat": "Hashrate 1h",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "C",
@@ -140,10 +128,6 @@
                         "expr": "nerdqaxe_temperature_celsius{sensor=\"asic_max\", hostname=\"$hostname\"}",
                         "legendFormat": "ASIC Temp",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "D",
@@ -165,10 +149,6 @@
                         "expr": "nerdqaxe_temperature_celsius{sensor=\"voltage_regulator\", hostname=\"$hostname\"}",
                         "legendFormat": "VR Temp",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "E",
@@ -183,7 +163,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "legend": {
@@ -329,14 +309,14 @@
                       "kind": "DataQuery",
                       "group": "datasource",
                       "version": "v0",
+                      "datasource": {
+                        "name": "-- Dashboard --"
+                      },
                       "spec": {
                         "expr": "",
                         "instant": false,
                         "panelId": 16,
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "datasource-1"
                       }
                     },
                     "refId": "A",
@@ -361,7 +341,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "gauge",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "barShape": "flat",
@@ -449,10 +429,6 @@
                         "expr": "nerdqaxe_best_difficulty{hostname=\"$hostname\"} / 1e9",
                         "instant": true,
                         "legendFormat": "Overall Best"
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "A",
@@ -475,10 +451,6 @@
                         "instant": false,
                         "legendFormat": "Session best difficulty",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "B",
@@ -493,7 +465,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "value",
@@ -594,10 +566,6 @@
                         "expr": "sum(nerdqaxe_pool_shares_accepted_total{hostname=\"$hostname\"}) + sum(nerdqaxe_pool_shares_rejected_total{hostname=\"$hostname\"})",
                         "instant": true,
                         "legendFormat": "Total Shares"
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "A",
@@ -620,10 +588,6 @@
                         "instant": false,
                         "legendFormat": "Rejected Shares",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "C",
@@ -645,10 +609,6 @@
                         "expr": "sum(nerdqaxe_pool_shares_rejected_total{hostname=\"$hostname\"}) / (sum(nerdqaxe_pool_shares_accepted_total{hostname=\"$hostname\"})) * 100",
                         "instant": true,
                         "legendFormat": "Rejected ratio"
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "B",
@@ -663,7 +623,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "value",
@@ -800,15 +760,15 @@
                       "kind": "DataQuery",
                       "group": "datasource",
                       "version": "v0",
+                      "datasource": {
+                        "name": "-- Dashboard --"
+                      },
                       "spec": {
                         "adHocFiltersEnabled": false,
                         "expr": "",
                         "instant": false,
                         "panelId": 3,
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "datasource-1"
                       }
                     },
                     "refId": "A",
@@ -833,7 +793,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "gauge",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "barShape": "rounded",
@@ -913,11 +873,11 @@
                       "kind": "DataQuery",
                       "group": "datasource",
                       "version": "v0",
+                      "datasource": {
+                        "name": "-- Dashboard --"
+                      },
                       "spec": {
                         "panelId": 12
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "datasource-1"
                       }
                     },
                     "refId": "A",
@@ -932,7 +892,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "bargauge",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "displayMode": "gradient",
@@ -1051,14 +1011,14 @@
                       "kind": "DataQuery",
                       "group": "datasource",
                       "version": "v0",
+                      "datasource": {
+                        "name": "-- Dashboard --"
+                      },
                       "spec": {
                         "expr": "",
                         "instant": false,
                         "panelId": 4,
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "datasource-1"
                       }
                     },
                     "refId": "A",
@@ -1073,7 +1033,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "gauge",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "barShape": "rounded",
@@ -1153,10 +1113,6 @@
                         "expr": "nerdqaxe_asic_frequency_hertz{hostname=\"$hostname\"}",
                         "legendFormat": "ASIC Frequency",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "A",
@@ -1171,7 +1127,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "legend": {
@@ -1264,14 +1220,14 @@
                       "kind": "DataQuery",
                       "group": "datasource",
                       "version": "v0",
+                      "datasource": {
+                        "name": "-- Dashboard --"
+                      },
                       "spec": {
                         "expr": "",
                         "instant": false,
                         "panelId": 106,
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "datasource-1"
                       }
                     },
                     "refId": "A",
@@ -1286,7 +1242,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "gauge",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "barShape": "rounded",
@@ -1367,10 +1323,6 @@
                         "instant": true,
                         "legendFormat": "Fan {{fan}}",
                         "range": false
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "B",
@@ -1385,7 +1337,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "gauge",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "barShape": "rounded",
@@ -1467,10 +1419,6 @@
                         "expr": "nerdqaxe_blocks_found_total{hostname=\"$hostname\"}",
                         "instant": true,
                         "legendFormat": "Total Blocks Found"
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "B",
@@ -1492,10 +1440,6 @@
                         "expr": "nerdqaxe_session_blocks_found_total{hostname=\"$hostname\"}",
                         "instant": true,
                         "legendFormat": "Session Blocks Found"
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "A",
@@ -1510,7 +1454,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "value",
@@ -1602,7 +1546,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "text",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "code": {
@@ -1650,10 +1594,6 @@
                         "instant": true,
                         "legendFormat": "__auto",
                         "range": false
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "A",
@@ -1668,7 +1608,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "background_solid",
@@ -1756,10 +1696,6 @@
                         "format": "table",
                         "instant": true,
                         "range": false
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "A",
@@ -1818,18 +1754,10 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "table",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "cellHeight": "sm",
-                "footer": {
-                  "countRows": false,
-                  "fields": "",
-                  "reducer": [
-                    "sum"
-                  ],
-                  "show": false
-                },
                 "showHeader": true
               },
               "fieldConfig": {
@@ -1891,10 +1819,6 @@
                         "expr": "nerdqaxe_temperature_celsius{hostname=\"$hostname\"}",
                         "legendFormat": "{{sensor}}",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "A",
@@ -1916,10 +1840,6 @@
                         "expr": "nerdqaxe_asic_temperature_celsius{hostname=\"$hostname\"}",
                         "legendFormat": "ASIC {{asic}}",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "B",
@@ -1934,7 +1854,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "legend": {
@@ -2078,10 +1998,6 @@
                         "editorMode": "code",
                         "expr": "nerdqaxe_uptime_seconds{hostname=\"$hostname\"}",
                         "instant": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "A",
@@ -2096,7 +2012,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "none",
@@ -2156,14 +2072,14 @@
                       "kind": "DataQuery",
                       "group": "datasource",
                       "version": "v0",
+                      "datasource": {
+                        "name": "-- Dashboard --"
+                      },
                       "spec": {
                         "expr": "",
                         "instant": false,
                         "panelId": 16,
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "datasource-1"
                       }
                     },
                     "refId": "A",
@@ -2178,7 +2094,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "bargauge",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "displayMode": "gradient",
@@ -2292,10 +2208,6 @@
                         "expr": "nerdqaxe_power_watts{hostname=\"$hostname\"} / (nerdqaxe_hashrate_hashes_per_second{hostname=\"$hostname\"} / 1e12)",
                         "legendFormat": "__auto",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "A",
@@ -2310,7 +2222,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "gauge",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "barShape": "rounded",
@@ -2392,10 +2304,6 @@
                         "instant": false,
                         "legendFormat": "Current ASIC Voltage",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "B",
@@ -2419,10 +2327,6 @@
                         "instant": false,
                         "legendFormat": "Current Voltage",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "A",
@@ -2446,10 +2350,6 @@
                         "instant": false,
                         "legendFormat": "Current Input",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "D",
@@ -2473,10 +2373,6 @@
                         "instant": false,
                         "legendFormat": "Power Usage",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "E",
@@ -2491,7 +2387,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "legend": {
@@ -2630,10 +2526,6 @@
                         "expr": "rate(nerdqaxe_pool_shares_accepted_total{hostname=\"$hostname\"}[$__rate_interval])",
                         "legendFormat": "Accepted",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "A",
@@ -2655,10 +2547,6 @@
                         "expr": "rate(nerdqaxe_pool_shares_rejected_total{hostname=\"$hostname\"}[$__rate_interval])",
                         "legendFormat": "Rejected",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "B",
@@ -2673,7 +2561,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "legend": {
@@ -2809,10 +2697,6 @@
                         "expr": "nerdqaxe_pool_ping_rtt_seconds{hostname=\"$hostname\"} * 1000",
                         "legendFormat": "Ping RTT",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "A",
@@ -2834,10 +2718,6 @@
                         "expr": "nerdqaxe_pool_ping_loss_ratio{hostname=\"$hostname\"}",
                         "legendFormat": "Ping Loss Ratio",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "B",
@@ -2852,7 +2732,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "legend": {
@@ -2982,10 +2862,6 @@
                         "expr": "nerdqaxe_wifi_rssi_dbm{hostname=\"$hostname\"}",
                         "legendFormat": "WiFi RSSI",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "A",
@@ -3000,7 +2876,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "legend": {
@@ -3098,14 +2974,14 @@
                       "kind": "DataQuery",
                       "group": "datasource",
                       "version": "v0",
+                      "datasource": {
+                        "name": "-- Dashboard --"
+                      },
                       "spec": {
                         "expr": "",
                         "instant": false,
                         "panelId": 1,
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "datasource-1"
                       }
                     },
                     "refId": "A",
@@ -3130,7 +3006,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "gauge",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "barShape": "flat",
@@ -3221,10 +3097,6 @@
                         "expr": "nerdqaxe_fan_speed_rpm{hostname=\"$hostname\"}",
                         "legendFormat": "Fan {{fan}}",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "A",
@@ -3239,7 +3111,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "legend": {
@@ -3336,14 +3208,14 @@
                       "kind": "DataQuery",
                       "group": "datasource",
                       "version": "v0",
+                      "datasource": {
+                        "name": "-- Dashboard --"
+                      },
                       "spec": {
                         "expr": "",
                         "instant": false,
                         "panelId": 1,
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "datasource-1"
                       }
                     },
                     "refId": "A",
@@ -3368,7 +3240,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "gauge",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "barShape": "flat",
@@ -3449,10 +3321,6 @@
                         "expr": "nerdqaxe_pool_connected{hostname=\"$hostname\"}",
                         "instant": true,
                         "legendFormat": "{{url}}"
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
                       }
                     },
                     "refId": "A",
@@ -3467,7 +3335,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.3.0-34259522365",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "background_solid",
@@ -3986,14 +3854,13 @@
             "kind": "DataQuery",
             "group": "prometheus",
             "version": "v0",
+            "datasource": {
+              "name": "${datasource}"
+            },
             "spec": {
               "qryType": 1,
               "query": "label_values(nerdqaxe_info,hostname)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
-            },
-            "labels": {
-              "grafana.app/export-label": "prometheus-1",
-              "grafana.app/export-datasource-name": "grafanacloud-tsack-prom"
             }
           },
           "regex": "",
