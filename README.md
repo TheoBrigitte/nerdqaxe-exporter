@@ -126,7 +126,7 @@ Output:
 
 ```
 $ nerdqaxe-exporter --log.format console --target http://192.168.1.42
-4:26PM INF starting nerdqaxe-exporter revision=127b0e8eec43fa44475063cf28ad2071565624ff version=0.1.0
+4:26PM INF starting nerdqaxe-exporter revision=846d39fa31a91401140e456bb88665c1f735b46f version=0.2.0
 4:26PM INF device reachable asic_model=BM1370 device_model=NerdQAxe++ hostname=nerdqaxe target=http://192.168.1.42 version=V1.0.37.2-LTS
 4:26PM INF listening address=:10055 path=/metrics targets=["http://192.168.1.42"]
 ```
@@ -134,14 +134,15 @@ $ nerdqaxe-exporter --log.format console --target http://192.168.1.42
 ### Docker
 
 ```
-docker run --rm -p 10055:10055 docker.io/theo01/nerdqaxe-exporter --target http://192.168.1.42
+docker run --rm -p 10055:10055 docker.io/theo01/nerdqaxe-exporter:latest --target http://192.168.1.42
 ```
 
 Output:
 
 ```
-{"level":"info","target":"http://192.168.1.42","device_model":"NerdQAxe++","asic_model":"BM1370","hostname":"nerdqaxe","version":"V1.0.37.2-LTS","time":"2026-09-13T12:09:14Z","message":"device reachable"}
-{"level":"info","address":":10055","path":"/metrics","targets":["http://192.168.1.42"],"time":"2026-09-13T12:09:14Z","message":"listening"}
+{"level":"info","version":"0.2.0","revision":"846d39fa31a91401140e456bb88665c1f735b46f","time":"2026-09-14T16:45:14Z","message":"starting nerdqaxe-exporter"}
+{"level":"info","target":"http://192.168.1.42","device_model":"NerdQAxe++","asic_model":"BM1370","hostname":"nerdqaxe","version":"V1.0.37.2-LTS","time":"2026-09-14T16:45:14Z","message":"device reachable"}
+{"level":"info","address":":10055","path":"/metrics","targets":["http://192.168.1.42"],"time":"2026-09-14T16:45:14Z","message":"listening"}
 ```
 
 ### Docker compose (testing)
@@ -155,6 +156,7 @@ echo 'NERDQAXE_TARGET=http://192.168.1.42' > .env
 Start the exporter, Prometheus and Grafana:
 
 ```
+curl -LO https://raw.githubusercontent.com/TheoBrigitte/nerdqaxe-exporter/refs/heads/main/docker-compose.yaml
 docker-compose up -d --wait
 ```
 
