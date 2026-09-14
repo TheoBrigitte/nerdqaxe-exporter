@@ -54,6 +54,7 @@ docker_digest:
 
 archives:
   - formats: ["binary"]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
 
 changelog:
   abbrev: 7

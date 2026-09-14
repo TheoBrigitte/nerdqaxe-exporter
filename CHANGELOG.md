@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Update readme install section
+- Remove version from release asset names
 
 ### Fixed
 
